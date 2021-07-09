@@ -1,0 +1,14 @@
+@mac die Mac is not supported
+sourcemod 1.10
+auth github ${GHP}
+dependency github bcserv/smlib transitional_syntax-SNAPSHOT
+dependency raw https://raw.githubusercontent.com/DoctorMcKay/sourcemod-plugins/master/scripting/include/morecolors.inc
+dependency limetech tf2items latest
+dependency github FlaminSarge/tf2attributes v1.2.1
+dependency github nosoop/SM-TFEconData 0.17.1
+clone https://github.com/nosoop/stocksoup.git into addons/sourcemod/scripting/include/stocksoup
+dependency limetech steamtools latest
+dependency forums patch 2726564
+dependency github DosMike/MotdMenu 21w26c MotdMenu.zip
+compilepool 1
+spcomp scripting/plugin.sp -iscripting -oplugin.smx
