@@ -3,7 +3,6 @@ package com.dosmike.spsauce.github;
 import com.dosmike.spsauce.Executable;
 import com.dosmike.spsauce.Plugin;
 import com.dosmike.spsauce.PluginSource;
-import com.dosmike.spsauce.tasks.FetchTask;
 import com.dosmike.spsauce.utils.ChunckReadable;
 import com.dosmike.spsauce.utils.InOut;
 import com.dosmike.spsauce.utils.Ref;
@@ -86,7 +85,7 @@ public class HubSource implements PluginSource {
         System.out.println("Downloaded "+filename.it +", extracting...");
         archive = archive.getParent().resolve(filename.it).normalize();
         Path libs = Executable.workdir.resolve("spcache");
-        if (InOut.Unpack(archive, libs, FetchTask.SOURCEMOD_ARCHIVE_ROOT, InOut::FileExtractFilter)==0) {
+        if (InOut.Unpack(archive, libs, InOut.SOURCEMOD_ARCHIVE_ROOT, InOut::FileExtractFilter)==0) {
             System.out.println("Archive has bad structure, guessing file paths!");
             if (InOut.UnpackUnordered(archive, libs, InOut::FileExtractFilter) == 0)
                 throw new IOException("Failed to extract " + filename.it);

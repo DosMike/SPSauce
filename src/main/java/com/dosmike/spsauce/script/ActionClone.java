@@ -2,11 +2,7 @@ package com.dosmike.spsauce.script;
 
 import com.dosmike.spsauce.Executable;
 import com.dosmike.spsauce.tasks.CloneTask;
-import com.dosmike.spsauce.tasks.ExecTask;
-import org.apache.commons.exec.CommandLine;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 

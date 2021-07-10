@@ -4,7 +4,6 @@ import com.dosmike.spsauce.Executable;
 import com.dosmike.spsauce.Plugin;
 import com.dosmike.spsauce.PluginSource;
 import com.dosmike.spsauce.am.SourceCluster;
-import com.dosmike.spsauce.tasks.FetchTask;
 import com.dosmike.spsauce.utils.InOut;
 import com.dosmike.spsauce.utils.Ref;
 
@@ -62,7 +61,7 @@ public class DirectSource implements PluginSource {
             System.out.println("Downloaded "+filename.it +", extracting...");
             archive = archive.getParent().resolve(filename.it).normalize();
             Path libs = Executable.workdir.resolve("spcache");
-           if (InOut.Unpack(archive, libs, FetchTask.SOURCEMOD_ARCHIVE_ROOT, InOut::FileExtractFilter) == 0)
+           if (InOut.Unpack(archive, libs, InOut.SOURCEMOD_ARCHIVE_ROOT, InOut::FileExtractFilter) == 0)
                 throw new IOException("Cannot patch non-existing file, please ensure patches are applied after dependencies");
             Files.deleteIfExists(archive);
             return true;

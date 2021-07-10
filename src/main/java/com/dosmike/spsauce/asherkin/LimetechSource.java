@@ -3,7 +3,6 @@ package com.dosmike.spsauce.asherkin;
 import com.dosmike.spsauce.Executable;
 import com.dosmike.spsauce.Plugin;
 import com.dosmike.spsauce.PluginSource;
-import com.dosmike.spsauce.tasks.FetchTask;
 import com.dosmike.spsauce.utils.InOut;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -56,7 +55,7 @@ public class LimetechSource implements PluginSource {
             throw new IOException("Download failed for "+dep.name);
         System.out.println("Downloaded "+filename+", extracting...");
         Path libs = Executable.workdir.resolve("spcache");
-        if (InOut.Unpack(archive, libs, FetchTask.SOURCEMOD_ARCHIVE_ROOT, InOut::FileExtractFilter)==0)
+        if (InOut.Unpack(archive, libs, InOut.SOURCEMOD_ARCHIVE_ROOT, InOut::FileExtractFilter)==0)
             throw new IOException("Failed to extract "+filename);
         Files.deleteIfExists(archive);
         return true;

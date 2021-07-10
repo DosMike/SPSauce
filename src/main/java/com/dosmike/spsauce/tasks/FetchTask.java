@@ -6,17 +6,12 @@ import com.dosmike.spsauce.Task;
 import com.dosmike.spsauce.script.PluginLock;
 
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.function.Predicate;
 
 public class FetchTask implements Task {
 
     private final PluginSource at;
     private final Plugin dep;
     private final PluginLock lock;
-
-    public static Predicate<Path> SOURCEMOD_ARCHIVE_ROOT = path-> path.endsWith(Paths.get("addons"));
 
     public FetchTask(PluginLock lock, PluginSource authenticatedSource, Plugin dependency) {
         this.lock = lock;

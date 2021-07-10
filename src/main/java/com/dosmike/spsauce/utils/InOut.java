@@ -8,7 +8,6 @@ import org.apache.commons.compress.archivers.sevenz.SevenZArchiveEntry;
 import org.apache.commons.compress.archivers.sevenz.SevenZFile;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
-import org.apache.commons.compress.compressors.CompressorStreamFactory;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.jetbrains.annotations.Nullable;
 
@@ -173,6 +172,8 @@ public class InOut {
     //endregion
 
     //region zipUtils
+    public static Predicate<Path> SOURCEMOD_ARCHIVE_ROOT = path-> path.endsWith(Paths.get("addons"));
+    
     public static Path findArchiveRoot(Iterable<? extends ArchiveEntry> archive, Predicate<Path> isRoot) throws IOException {
         Path shortest = null;
         for (ArchiveEntry entry : archive) {

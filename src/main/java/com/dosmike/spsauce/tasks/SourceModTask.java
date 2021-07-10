@@ -63,7 +63,7 @@ public class SourceModTask implements Task {
             AMSource.waitNextRequest();
             InOut.DownloadURL(target, archive, null, null);
         }
-        if (InOut.Unpack(archive, Executable.workdir.resolve("spcache"), FetchTask.SOURCEMOD_ARCHIVE_ROOT, null)==0)
+        if (InOut.Unpack(archive, Executable.workdir.resolve("spcache"), InOut.SOURCEMOD_ARCHIVE_ROOT, null)==0)
             throw new IOException("Unpacking SourceMod failed!");
         else {
             Files.deleteIfExists(archive);
