@@ -173,7 +173,7 @@ public class InOut {
 
     //region zipUtils
     public static Predicate<Path> SOURCEMOD_ARCHIVE_ROOT = path-> path.endsWith(Paths.get("addons"));
-    
+
     public static Path findArchiveRoot(Iterable<? extends ArchiveEntry> archive, Predicate<Path> isRoot) throws IOException {
         Path shortest = null;
         for (ArchiveEntry entry : archive) {
