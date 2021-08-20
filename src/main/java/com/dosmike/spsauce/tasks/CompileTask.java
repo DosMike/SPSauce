@@ -18,7 +18,9 @@ public class CompileTask implements Task {
         Path baseDir = Executable.workdir.resolve(Paths.get("spcache", "addons", "sourcemod", "scripting"));
         if (Executable.OS == Executable.OperatingSystem.Windows)
             compilerPath = baseDir.resolve("spcomp.exe");
-        else if (Executable.OS == Executable.OperatingSystem.Linux || Executable.OS == Executable.OperatingSystem.Mac)
+        else if (Executable.OS == Executable.OperatingSystem.Linux && Executable.ARCH64)
+            compilerPath = baseDir.resolve("spcomp64");
+        else
             compilerPath = baseDir.resolve("spcomp");
         this.args = new LinkedList<>();
         this.args.add(compilerPath.toString());
