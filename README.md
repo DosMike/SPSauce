@@ -29,6 +29,9 @@ Keep in mind that all file targets are limited to subdirectories wherever possib
 
 Execution is done in three phases: Parse, dependency resolution, task execution. The second phase  will already 
 
+**On Authentication:** I know Git Hub PATs are a bit iffy, but without the API allows for only [60 requests per hour](https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting) and that's abysmal! If you can't use
+`clone` or want to use spsauce with another build system, you can always create a read only PAT (without scopes).
+
 Build Script
 -----
 There are the platform prefixes, @windows, @linux and @mac that allow you to perform actions for a single platform.
@@ -60,6 +63,11 @@ Not all arguments, but most support replacements from environment variables or a
 ${NAME} is replaced with an environment variable, %{NAME} is replaced with the value from the argument `--<NAME> <VALUE>`. There is one exception however:
 ${CWD} and %{CWD} are replaced with the path of the loaded build-script.
 
+Interactive mode has some special commands:
+* `quit` or `exit` (or ^C) to exit
+* `batch` to switch into batch mode until the next `run`
+* `run` to execute the batch. Optional if `-I` was used and input ends.
+
 Arguments
 -----
 
@@ -68,6 +76,8 @@ Arguments
 * `-x`|`--fulldeps`<br> Normally dependencies only extract .sp and .inc files as that's all that's requried for building, but you can let them exctract all files.
 * `--offline`<br> Skips all `auth`, `sourcemod`, `dependency` and `clone` tasks.
 * `-s`|`--no-exec`<br> Skips all `exec` tasks.
+* `-i` Interactive single mode. Will execute instructions from stdin every line, unless a batch is started.
+* `-I` Interactive batch mode. Immediately start a batch in interactive mode. Can be used to pipe instructions in.
 * `--<KEY> <VALUE>`<br> Passes values into the template system.
 * `--stacktrace`<br> Used for debugging
 
@@ -75,4 +85,6 @@ Wrappers
 -----
 Since this application is written in java, invoking SPSauce can be a bit tedious with `java -jar <path to jar>`.
 The release archive contains wrapper scripts for batch and bash that short this to `sps`. These wrappers require the
-jar archive to be placed in ./.spsauce/spsauce-version-all.jar. 
+jar archive to be placed in ./spsauce/spsauce-version-all.jar.  
+For non-technicall people it's best to pack the spsauce wrapper and script in your repository, and use the default
+script name `sp.sauce`. This way you can tell your users to just execute `./sps` or `sps.bat` to build the plugin.

@@ -4,5 +4,6 @@
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/spcache/addons/sourcemod/scripting/include/stocksoup" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/test/spcache/addons/sourcemod/scripting/include/stocksoup" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/wrapper/spcache/addons/sourcemod/scripting/include/stocksoup" vcs="Git" />
   </component>
 </project>

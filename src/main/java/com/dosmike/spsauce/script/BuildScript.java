@@ -5,9 +5,11 @@ import com.dosmike.spsauce.Executable;
 import com.dosmike.spsauce.TaskList;
 import com.dosmike.spsauce.utils.ArgParser;
 import com.dosmike.spsauce.utils.Ref;
+import com.dosmike.spsauce.utils.UnknownInstructionException;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -21,14 +23,18 @@ import java.util.regex.Pattern;
 public class BuildScript {
 
     TaskList taskList = new TaskList();
-    Map<String, Authorization> authorizationMap = new HashMap<>();
+    static Map<String, Authorization> authorizationMap = new HashMap<>(); //persis for interactive mode
     PluginLock lock;
 
     List<ScriptAction> parsed = new LinkedList<>();
 
     public BuildScript(Path fromFile) throws IOException {
+        this(Files.newInputStream(fromFile));
+    }
+
+    public BuildScript(InputStream inputStream) throws IOException {
         lock = new PluginLock();
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(Files.newInputStream(fromFile)))) {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
             Ref<String> line=new Ref<>(), word=new Ref<>();
             while ((line.it =br.readLine())!=null) {
                 line.it = line.it.trim();
@@ -39,7 +45,7 @@ public class BuildScript {
                     if (word.it.equalsIgnoreCase("@windows")) { if (!Executable.OS.equals(Executable.OperatingSystem.Windows)) continue; }
                     else if (word.it.equalsIgnoreCase("@linux")) { if (!Executable.OS.equals(Executable.OperatingSystem.Linux)) continue; }
                     else if (word.it.equalsIgnoreCase("@mac")) { if (!Executable.OS.equals(Executable.OperatingSystem.Mac)) continue; }
-                    else throw new RuntimeException("Invalid OS filter: "+word.it);
+                    else throw new UnknownInstructionException("Invalid OS filter: "+word.it);
                     getWord(line, word);
                 }
                 if (word.it.equalsIgnoreCase("auth")) {
@@ -76,7 +82,7 @@ public class BuildScript {
                     parsed.add(new ActionDelete(this, line.it));
                 } else if (word.it.equalsIgnoreCase("move")) {
                     parsed.add(new ActionMove(this, line.it));
-                }
+                } else throw new UnknownInstructionException("Unknown instruction `"+word+"`");
             }
         }
     }

@@ -96,7 +96,10 @@ public class ArgParser {
         return vflags.get(flag);
     }
     public static Flag FindFlagByString(String alias) {
-        return _flags.stream().filter(f->f.aliases.stream().anyMatch(a->a.equalsIgnoreCase(alias))).findFirst().orElse(null);
+        return _flags.stream().filter(f->f.aliases.stream()
+                //case-sensitive for single letter (short flags)
+                .anyMatch(a->alias.length()>1 ? a.equalsIgnoreCase(alias) : a.equals(alias)))
+                .findFirst().orElse(null);
     }
     /** un-tagged Strings are usually files */
     public static List<String> GetStringArgs() {
