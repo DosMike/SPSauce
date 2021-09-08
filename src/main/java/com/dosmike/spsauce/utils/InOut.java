@@ -149,6 +149,9 @@ public class InOut {
      * @param replace can limit what files are copied
      */
     public static void MoveFiles(Path from, Path to, boolean move, ReplaceFlag replace) throws IOException {
+        System.out.println((move?"Move":"Copy")+" files...");
+        System.out.println("Source: "+from);
+        System.out.println("Target: "+to);
         from = from.toAbsolutePath().normalize();
         to = to.toAbsolutePath().normalize();
         if (!from.startsWith(Executable.workdir)) throw new IOException("Illegal source directory, can not move directories outside work dir");
@@ -160,13 +163,41 @@ public class InOut {
         } catch (IOException ignore) {}
         final Path source = from, target = to;
         Files.walkFileTree(from, new FileVisitor<Path>() {
+            String prefix = " ";
+            final LinkedList<Long> remainingStack = new LinkedList<>();
             @Override
             public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                if (remainingStack.isEmpty()) {
+                    System.out.println(prefix + dir.getFileName().toString());
+                } else {
+                    long remain = remainingStack.peek()-1L;
+                    remainingStack.set(0,remain);
+                    if (remain>0L) {
+                        System.out.println(prefix + "+-" + dir.getFileName().toString());
+                        prefix += "| ";
+                    } else {
+                        System.out.println(prefix + "`-" + dir.getFileName().toString());
+                        prefix += "  ";
+                    }
+                }
+                remainingStack.push(Files.list(dir).count());
+
                 MakeDirectories(target, source.relativize(dir));
                 return FileVisitResult.CONTINUE;
             }
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                if (!remainingStack.isEmpty()) { //will be empty for single files
+                    long remain = remainingStack.peek() - 1L;
+                    remainingStack.set(0, remain);
+                    if (remain > 0L) {
+                        System.out.println(prefix + "+-" + file.getFileName().toString());
+                    } else {
+                        System.out.println(prefix + "`-" + file.getFileName().toString());
+                        prefix = prefix.substring(0, prefix.length() - 2) + "  ";
+                    }
+                }
+
                 Path destination = target.resolve(source.relativize(file));
                 Set<CopyOption> fCopy = new HashSet<>();
                 fCopy.add(StandardCopyOption.COPY_ATTRIBUTES);
@@ -192,6 +223,9 @@ public class InOut {
             }
             @Override
             public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                if (prefix.length()>2) prefix = prefix.substring(0,prefix.length()-2); else prefix = "";
+                remainingStack.pop();
+
                 if (move) RemoveRecursive(dir);
                 return FileVisitResult.CONTINUE;
             }
