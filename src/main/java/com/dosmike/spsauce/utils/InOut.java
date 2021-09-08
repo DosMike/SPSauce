@@ -134,14 +134,28 @@ public class InOut {
         }
         Files.deleteIfExists(path);
     }
-    public static void MoveFiles(Path from, Path to) throws IOException {
+    public enum ReplaceFlag {
+        All,
+        Older,
+        Skip,
+        Error
+    }
+    /**
+     * Moves or Copies files from <tt>from</tt> to <tt>to</tt>. When moving it tries a shortcut for renaming, otherwise
+     * the file tree will be walked.
+     * @param from file or directory to copy
+     * @param to name of the target file or directory
+     * @param move if true files will be moved, otherwise copied
+     * @param replace can limit what files are copied
+     */
+    public static void MoveFiles(Path from, Path to, boolean move, ReplaceFlag replace) throws IOException {
         from = from.toAbsolutePath().normalize();
         to = to.toAbsolutePath().normalize();
         if (!from.startsWith(Executable.workdir)) throw new IOException("Illegal source directory, can not move directories outside work dir");
         if (!to.startsWith(Executable.workdir)) throw new IOException("Illegal target directory, can not move directories outside work dir");
         if (to.startsWith(from)) throw new IOException("Target cannot be a sub directory of source");
-        try {
-            Files.move(from,to);
+        if (move) try { //shortcut for renaming
+            Files.move(from, to);
             return; //was able to move file / rename directory
         } catch (IOException ignore) {}
         final Path source = from, target = to;
@@ -154,7 +168,21 @@ public class InOut {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                 Path destination = target.resolve(source.relativize(file));
-                Files.copy(file, destination, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
+                Set<CopyOption> fCopy = new HashSet<>();
+                fCopy.add(StandardCopyOption.COPY_ATTRIBUTES);
+                fCopy.add(LinkOption.NOFOLLOW_LINKS);
+                if (Files.exists(destination)) {
+                    //skip if specified or file is older than destination
+                    if (replace == ReplaceFlag.Skip || (replace == ReplaceFlag.Older &&
+                            Files.getLastModifiedTime(file).compareTo(Files.getLastModifiedTime(destination)) < 0
+                            )) {
+                        return FileVisitResult.CONTINUE;
+                    }
+                    if (replace != ReplaceFlag.Error) {
+                        fCopy.add(StandardCopyOption.REPLACE_EXISTING);
+                    }
+                }
+                Files.copy(file, destination, fCopy.toArray(new CopyOption[0]));
                 return FileVisitResult.CONTINUE;
             }
             @Override
@@ -164,7 +192,7 @@ public class InOut {
             }
             @Override
             public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-                RemoveRecursive(dir);
+                if (move) RemoveRecursive(dir);
                 return FileVisitResult.CONTINUE;
             }
         });
