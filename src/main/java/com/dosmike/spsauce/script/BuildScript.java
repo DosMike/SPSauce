@@ -81,7 +81,9 @@ public class BuildScript {
                         word.it.equalsIgnoreCase("erase")) {
                     parsed.add(new ActionDelete(this, line.it));
                 } else if (word.it.equalsIgnoreCase("move")) {
-                    parsed.add(new ActionMove(this, line.it));
+                    parsed.add(new ActionMove(this, line.it, false));
+                } else if (word.it.equalsIgnoreCase("copy")) {
+                    parsed.add(new ActionMove(this, line.it, true));
                 } else throw new UnknownInstructionException("Unknown instruction `"+word+"`");
             }
         }
