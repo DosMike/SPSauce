@@ -41,7 +41,7 @@ Lines with that start with // or # are comments. Spaces are trimmed from each li
 | Name | Arguments | Description |
 |----|----|----|
 | auth | 'github' \<PAT> [login] | Log in to the GitHub API with a personal access token. The login parameter is for organisations and increasing the request limit even more. GitHub auth is required for `dependency github` only. |
-| sourcemod | \<branch> (\<build\>\|['latest']) | Download the specified sourcemod branch, with the given build number or the latest build |
+| sourcemod | \<branch> (\<build>\|['latest']) | Download the specified sourcemod branch, with the given build number or the latest build |
 | dependency | ('am'\|'forum'\|'forums') \<plugin thread id> | Download the files from a plugin posted on the forums. Directories will be guessed by file extension |
 | dependency | ('am'\|'forum'\|'forums') 'patch' \<post id> | Download the files from a single forum post id. Directories will be guessed again, and the file has to be replaced |
 | dependency | 'github' \<project slug> \<tag name> [archive name] | Looks up the release tag in the repo. Will download the sources if no other archive was specified |
@@ -57,7 +57,8 @@ Lines with that start with // or # are comments. Spaces are trimmed from each li
 | die | \<message> | Writes a message to std out during dependency resolution phase and exits with error-level |
 | mkdir | \<path> | Creates a directory within cwd |
 | delete/erase/remove | \<path> | Delete a file or directory recursively within cwd |
-| move | \<from> ':' \<to> | Move a directory within cwd |
+| move | \<from> ':' \<to> ['replace' \<mode>] | Move a file or directory within cwd.<br>Use `mode` to specify how to handle duplicate files. Possible modes are `All`, `Older`, `Skip` and `Error`(default). |
+| copy | \<from> ':' \<to> ['replace' \<mode>] | Copy a file or directory within cwd (like move) |
 
 Not all arguments, but most support replacements from environment variables or applications arguments. This is mainly inteded to not leak you auth tokens.
 ${NAME} is replaced with an environment variable, %{NAME} is replaced with the value from the argument `--<NAME> <VALUE>`. There is one exception however:
