@@ -60,7 +60,7 @@ public class Executable {
             if (ArgParser.IsFlagSet(fInteractive) || ArgParser.IsFlagSet(fInteractiveBatch)) {
                 interactiveHandler();
             } else {
-                if (Files.isReadable(selfScript)) throw new IOException("Could not read script file");
+                if (!Files.isReadable(selfScript)) throw new IOException("Could not read script file");
                 System.out.println("> Parsing " + selfScript.getFileName() + "...");
                 BuildScript script = new BuildScript(selfScript);
                 System.out.println("> Running build script");
