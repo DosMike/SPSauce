@@ -194,7 +194,8 @@ public class InOut {
                         System.out.println(prefix + "+-" + file.getFileName().toString());
                     } else {
                         System.out.println(prefix + "`-" + file.getFileName().toString());
-                        prefix = prefix.substring(0, prefix.length() - 2) + "  ";
+                        if (prefix.length()>=2)
+                            prefix = prefix.substring(0, prefix.length() - 2) + "  ";
                     }
                 }
 
