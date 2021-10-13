@@ -136,13 +136,8 @@ public class AMSource implements PluginSource {
             System.out.println("Downloaded "+filename.it +", extracting...");
             archive = archive.getParent().resolve(filename.it).normalize();
             Path libs = Executable.workdir.resolve("spcache");
-            if ("PATCH".equals(dep.downloadRef)) {
-                if (InOut.Unpack(archive, libs, InOut.SOURCEMOD_ARCHIVE_ROOT, patchFilter) == 0)
-                    throw new IOException("Failed to extract " + filename.it);
-            } else {
-                if (InOut.Unpack(archive, libs, InOut.SOURCEMOD_ARCHIVE_ROOT, InOut::FileExtractFilter) == 0)
-                    throw new IOException("Cannot patch non-existing file, please ensure patches are applied after dependencies");
-            }
+            if (InOut.Unpack(archive, libs, InOut.SOURCEMOD_ARCHIVE_ROOT, InOut::FileExtractFilter) == 0)
+                throw new IOException("Failed to extract " + filename.it);
             Files.deleteIfExists(archive);
             return true;
         } else {
@@ -153,9 +148,7 @@ public class AMSource implements PluginSource {
                 Path torel = dep.amattachments.estimateTarget(i);
                 if (torel != null) {
                     Path toabs = libs.resolve(torel);
-                    if ("PATCH".equals(dep.downloadRef) && !patchFilter.test(toabs))
-                        throw new IOException("Cannot patch non-existing file, please ensure patches are applied after dependencies");
-                    else if (!InOut.FileExtractFilter(toabs)) continue;
+                    if (!InOut.FileExtractFilter(toabs)) continue;
                     InOut.MakeDirectories(libs, torel.getParent());
                     try {
                         InOut.DownloadURL(dep.amattachments.getUrl(i), toabs, null, filename);
