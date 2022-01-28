@@ -32,7 +32,7 @@ public class ArgParser {
     static List<String> stringargs = new LinkedList<>();
     static boolean allowFlags = true;
 
-    private static Flag fHelp = RegisterFlag("Displays the help message", "?","-help");
+    private static final Flag fHelp = RegisterFlag("Displays the help message", "?","-help");
 
     public static Flag RegisterFlag(String description, String... aliases) {
         Flag flag = new Flag(description, false);

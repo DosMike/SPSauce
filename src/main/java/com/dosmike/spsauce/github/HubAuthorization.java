@@ -1,7 +1,6 @@
 package com.dosmike.spsauce.github;
 
 import com.dosmike.spsauce.Authorization;
-import org.jetbrains.annotations.Nullable;
 import org.kohsuke.github.GitHub;
 import org.kohsuke.github.GitHubBuilder;
 import org.kohsuke.github.RateLimitChecker;
@@ -13,7 +12,7 @@ public class HubAuthorization implements Authorization {
 
     final GitHub hub;
 
-    public HubAuthorization(String pat, @Nullable String login) throws IOException {
+    public HubAuthorization(String pat, String login) throws IOException {
         GitHubBuilder ghb = new GitHubBuilder();
         if (login != null) ghb.withOAuthToken(pat, login);
         else ghb.withOAuthToken(pat);

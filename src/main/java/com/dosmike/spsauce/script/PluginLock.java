@@ -2,12 +2,13 @@ package com.dosmike.spsauce.script;
 
 import com.dosmike.spsauce.Executable;
 import com.dosmike.spsauce.Plugin;
-import com.dosmike.spsauce.utils.InOut;
+import com.dosmike.spsauce.utils.BaseIO;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -24,7 +25,11 @@ public class PluginLock {
 
     public PluginLock() throws IOException {
         if (!Files.isRegularFile(lockFile)) {
-            InOut.MakeDirectories(Executable.workdir, Paths.get("spcache"));
+            BaseIO.MakeDirectories(Executable.workdir, Paths.get("spcache"));
+            Path gitignore = lockFile.getParent().resolve(".gitignore");
+            if (!Files.isRegularFile(gitignore)) {
+                Files.write(gitignore, "# This file was generated automatically\n# The purpose of this project is to not push dependencies in your repo, so let's not do that\n\n**".getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+            }
             return;
         }
 

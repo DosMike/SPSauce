@@ -3,8 +3,9 @@ package com.dosmike.spsauce.github;
 import com.dosmike.spsauce.Executable;
 import com.dosmike.spsauce.Plugin;
 import com.dosmike.spsauce.PluginSource;
+import com.dosmike.spsauce.utils.ArchiveIO;
+import com.dosmike.spsauce.utils.BaseIO;
 import com.dosmike.spsauce.utils.ChunckReadable;
-import com.dosmike.spsauce.utils.InOut;
 import com.dosmike.spsauce.utils.Ref;
 import org.kohsuke.github.GHAsset;
 import org.kohsuke.github.GHBranch;
@@ -69,25 +70,25 @@ public class HubSource implements PluginSource {
 //        if (dep.packageurl == null) return false;
         Ref<String> filename = new Ref<>();
         Path archive = Executable.workdir.resolve(Paths.get("spcache", "download", "."));
-        InOut.MakeDirectories(Executable.workdir, Paths.get("spcache", "download"));
+        BaseIO.MakeDirectories(Executable.workdir, Paths.get("spcache", "download"));
         if (dep.packageurl != null)
-            InOut.DownloadURL(dep.packageurl, archive, null, filename);
+            BaseIO.DownloadURL(dep.packageurl, archive, null, filename);
         else if (dep.downloadRef instanceof GHRepository) {
             filename.it = (dep.name+"_"+dep.version+".zip").replaceAll("[^\\w.]","_");
             final Path finalArchive = archive = archive.getParent().resolve(filename.it);
 //            String branch = null;
 //            if (dep.version.endsWith("-SNAPSHOT")) branch = dep.version.substring(0,dep.version.length()-9);
             //dep.version is a commit sha1
-            String hash = ((GHRepository) dep.downloadRef).readZip(isf-> InOut.StreamToFile(ChunckReadable.chunks(isf), finalArchive, null),dep.version);
+            String hash = ((GHRepository) dep.downloadRef).readZip(isf-> BaseIO.StreamToFile(ChunckReadable.chunks(isf), finalArchive, null),dep.version);
         } else return false; //no download given?
         if (!Files.exists(archive))
             throw new IOException("Download failed for "+dep.name);
         System.out.println("Downloaded "+filename.it +", extracting...");
         archive = archive.getParent().resolve(filename.it).normalize();
         Path libs = Executable.workdir.resolve("spcache");
-        if (InOut.Unpack(archive, libs, InOut.SOURCEMOD_ARCHIVE_ROOT, InOut::FileExtractFilter)==0) {
+        if (ArchiveIO.Unpack(archive, libs, ArchiveIO.SOURCEMOD_ARCHIVE_ROOT, ArchiveIO::FileExtractFilter)==0) {
             System.out.println("Archive has bad structure, guessing file paths!");
-            if (InOut.UnpackUnordered(archive, libs, InOut::FileExtractFilter) == 0)
+            if (ArchiveIO.UnpackUnordered(archive, libs, ArchiveIO::FileExtractFilter) == 0)
                 throw new IOException("Failed to extract " + filename.it);
         }
         Files.deleteIfExists(archive);

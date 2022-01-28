@@ -1,11 +1,11 @@
 plugins {
     id 'java'
     id 'application'
-    id "com.github.johnrengelman.shadow" version "6.1.0"
+//    id "com.github.johnrengelman.shadow" version "6.1.0"
 }
 
 group 'com.dosmike'
-version '1.2'
+version '1.3'
 
 repositories {
     mavenCentral()
@@ -18,30 +18,50 @@ mainClassName = 'com.dosmike.spsauce.Executable'
 
 jar {
     manifest {
-        attributes('Main-Class': 'com.dosmike.spsauce.Executable')
+        attributes('Main-Class': 'com.dosmike.spsauce.Launcher')
     }
 }
 
 task moveArchive (type: Copy) {
-    from shadowJar
+    from jar
     into 'wrapper/spsauce/'
 }
-shadowJar.finalizedBy moveArchive
+jar.finalizedBy moveArchive
+//shadowJar.finalizedBy moveArchive
+
+task makeRTdeps() {
+    outputs.dir sourceSets.main.output.resourcesDir
+    doLast{
+        def allDeps= [] as Set
+        configurations.findAll {it.canBeResolved}.each {
+            allDeps += it.getResolvedConfiguration().getResolvedArtifacts().collect {art->
+                art.getModuleVersion().getId()
+            } collect {dep ->
+                "${dep.group}:${dep.name}:${dep.version}"
+            }
+        }
+        println ("Collected the following dependencies for runtime collection:")
+        allDeps.each {println "  $it"}
+        new File(sourceSets.main.output.resourcesDir, ".runtimedeps").text = allDeps.join("\n");
+    }
+}
+jar.dependsOn(makeRTdeps);
 
 dependencies {
-    implementation 'org.jetbrains:annotations:22.0.0' //apache2
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.2'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.2'
+//    implementation 'org.jetbrains:annotations:22.0.0' //apache2
+//    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
+//    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
 
-    implementation 'org.jsoup:jsoup:1.14.2' //MIT
+    compileOnly 'org.jsoup:jsoup:1.14.3' //MIT
 
-    implementation 'org.apache.commons:commons-exec:1.3' //apache2
-    implementation 'org.apache.commons:commons-compress:1.21' //apache2
-    implementation 'com.github.luben:zstd-jni:1.5.0-4' //bsd 2-clause
-    implementation 'org.brotli:dec:0.1.2' //MIT
-    implementation 'org.tukaani:xz:1.9' //Public Domain
+    compileOnly 'org.apache.commons:commons-exec:1.3' //apache2
+    compileOnly 'org.apache.commons:commons-compress:1.21' //apache2
 
-    implementation 'org.kohsuke:github-api:1.132' //MIT
+    //compress algorithm support
+    compileOnly 'org.brotli:dec:0.1.2' //MIT
+    compileOnly 'org.tukaani:xz:1.9' //Public Domain
+
+    compileOnly 'org.kohsuke:github-api:1.301' //MIT
 }
 
 test {

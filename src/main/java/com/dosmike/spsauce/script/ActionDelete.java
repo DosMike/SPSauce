@@ -1,6 +1,6 @@
 package com.dosmike.spsauce.script;
 
-import com.dosmike.spsauce.utils.InOut;
+import com.dosmike.spsauce.utils.BaseIO;
 
 import java.nio.file.Paths;
 
@@ -16,6 +16,6 @@ public class ActionDelete implements ScriptAction {
 
     @Override
     public void run() throws Throwable {
-        context.taskList.and(()-> InOut.RemoveRecursive(Paths.get(target)) );
+        context.taskList.and(()-> BaseIO.RemoveRecursive(Paths.get(target)) );
     }
 }
