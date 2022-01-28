@@ -49,7 +49,7 @@ public class ActionExec implements ScriptAction {
                     int end = line.indexOf(' ', from+1);
                     String substring = (end < 0) ? line.substring(from) : line.substring(from, end);
                     args.add(substring);
-                    from = end;
+                    from += substring.length();
                     break;
                 }
             }
