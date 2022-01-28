@@ -3,7 +3,8 @@ package com.dosmike.spsauce.am;
 import com.dosmike.spsauce.Executable;
 import com.dosmike.spsauce.Plugin;
 import com.dosmike.spsauce.PluginSource;
-import com.dosmike.spsauce.utils.InOut;
+import com.dosmike.spsauce.utils.ArchiveIO;
+import com.dosmike.spsauce.utils.BaseIO;
 import com.dosmike.spsauce.utils.Ref;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -58,8 +59,8 @@ public class AMSource implements PluginSource {
         waitNextRequest();
         lastSourceUrl = url;
         lastDocument = null;
-        HttpURLConnection con = InOut.PrepareConnection(url);
-        InOut.CheckHTTPCode(con);
+        HttpURLConnection con = BaseIO.PrepareConnection(url);
+        BaseIO.CheckHTTPCode(con);
         lastDocument = Jsoup.parse(con.getInputStream(), "UTF-8", "https://forums.alliedmods.net/");
     }
     private Plugin searchByPostUrl(String url) throws IOException {
@@ -122,27 +123,22 @@ public class AMSource implements PluginSource {
         return data;
     }
 
-    private static Predicate<Path> patchFilter = p->InOut.FileExtractFilter(p)&&Files.exists(p);
+    private static Predicate<Path> patchFilter = p-> ArchiveIO.FileExtractFilter(p)&&Files.exists(p);
 
     @Override
     public boolean fetch(Plugin dep) throws IOException {
         if (dep.packageurl != null) {
             Ref<String> filename = new Ref<>();
             Path archive = Executable.workdir.resolve(Paths.get("spcache", "download", "."));
-            InOut.MakeDirectories(Executable.workdir, Paths.get("spcache", "download"));
-            InOut.DownloadURL(dep.packageurl, archive, null, filename);
+            BaseIO.MakeDirectories(Executable.workdir, Paths.get("spcache", "download"));
+            BaseIO.DownloadURL(dep.packageurl, archive, null, filename);
             if (!Files.exists(archive))
                 throw new IOException("Download failed for "+dep.name);
             System.out.println("Downloaded "+filename.it +", extracting...");
             archive = archive.getParent().resolve(filename.it).normalize();
             Path libs = Executable.workdir.resolve("spcache");
-            if ("PATCH".equals(dep.downloadRef)) {
-                if (InOut.Unpack(archive, libs, InOut.SOURCEMOD_ARCHIVE_ROOT, patchFilter) == 0)
-                    throw new IOException("Failed to extract " + filename.it);
-            } else {
-                if (InOut.Unpack(archive, libs, InOut.SOURCEMOD_ARCHIVE_ROOT, InOut::FileExtractFilter) == 0)
-                    throw new IOException("Cannot patch non-existing file, please ensure patches are applied after dependencies");
-            }
+            if (ArchiveIO.Unpack(archive, libs, ArchiveIO.SOURCEMOD_ARCHIVE_ROOT, ArchiveIO::FileExtractFilter) == 0)
+                throw new IOException("Failed to extract " + filename.it);
             Files.deleteIfExists(archive);
             return true;
         } else {
@@ -153,12 +149,10 @@ public class AMSource implements PluginSource {
                 Path torel = dep.amattachments.estimateTarget(i);
                 if (torel != null) {
                     Path toabs = libs.resolve(torel);
-                    if ("PATCH".equals(dep.downloadRef) && !patchFilter.test(toabs))
-                        throw new IOException("Cannot patch non-existing file, please ensure patches are applied after dependencies");
-                    else if (!InOut.FileExtractFilter(toabs)) continue;
-                    InOut.MakeDirectories(libs, torel.getParent());
+                    if (!ArchiveIO.FileExtractFilter(toabs)) continue;
+                    BaseIO.MakeDirectories(libs, torel.getParent());
                     try {
-                        InOut.DownloadURL(dep.amattachments.getUrl(i), toabs, null, filename);
+                        BaseIO.DownloadURL(dep.amattachments.getUrl(i), toabs, null, filename);
                         System.out.println("Downloaded "+filename.it);
                         downloaded++;
                     } catch (IOException ex) {

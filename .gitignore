@@ -1,6 +1,8 @@
 ### Custom
-# is fat output jar
+# is output jar
 wrapper/spsauce/
+# i dont want to add libraries to the project sources
+libs/
 
 ### JetBrains template
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio, WebStorm and Rider

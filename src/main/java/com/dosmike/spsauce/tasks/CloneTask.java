@@ -2,8 +2,8 @@ package com.dosmike.spsauce.tasks;
 
 import com.dosmike.spsauce.Executable;
 import com.dosmike.spsauce.Task;
-import com.dosmike.spsauce.utils.InOut;
-import org.jetbrains.annotations.Nullable;
+import com.dosmike.spsauce.utils.BaseIO;
+import com.dosmike.spsauce.utils.Nullable;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -26,7 +26,7 @@ public class CloneTask implements Task {
         Path clonebase = Executable.workdir.resolve("spcache");
         Path cloneTarget = clonebase.resolve(target);
         if (!Files.isDirectory(cloneTarget)) {
-            InOut.MakeDirectories(clonebase, target);
+            BaseIO.MakeDirectories(clonebase, target);
         } else {
             System.out.println("  Target directory exists, assuming cloned");
             return;

@@ -3,7 +3,8 @@ package com.dosmike.spsauce.asherkin;
 import com.dosmike.spsauce.Executable;
 import com.dosmike.spsauce.Plugin;
 import com.dosmike.spsauce.PluginSource;
-import com.dosmike.spsauce.utils.InOut;
+import com.dosmike.spsauce.utils.ArchiveIO;
+import com.dosmike.spsauce.utils.BaseIO;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -24,8 +25,8 @@ public class LimetechSource implements PluginSource {
         String project=criteria[0], version=criteria.length==2?criteria[1]:null;
         boolean latest = version != null;
 
-        HttpURLConnection con = InOut.PrepareConnection("https://builds.limetech.io/?project="+ URLEncoder.encode(project, "UTF-8"));
-        InOut.CheckHTTPCode(con);
+        HttpURLConnection con = BaseIO.PrepareConnection("https://builds.limetech.io/?project="+ URLEncoder.encode(project, "UTF-8"));
+        BaseIO.CheckHTTPCode(con);
         Document doc = Jsoup.parse(con.getInputStream(), "UTF-8", "https://builds.limetech.io/");
         Plugin plugin = new Plugin();
         plugin.name = project;
@@ -49,13 +50,13 @@ public class LimetechSource implements PluginSource {
         if (dep.packageurl == null) return false;
         String filename = dep.packageurl.substring(dep.packageurl.lastIndexOf('/')+1);
         Path archive = Executable.workdir.resolve(Paths.get("spcache", "download", filename)).normalize();
-        InOut.MakeDirectories(Executable.workdir, Paths.get("spcache", "download"));
-        InOut.DownloadURL(dep.packageurl, archive, null, null);
+        BaseIO.MakeDirectories(Executable.workdir, Paths.get("spcache", "download"));
+        BaseIO.DownloadURL(dep.packageurl, archive, null, null);
         if (!Files.exists(archive))
             throw new IOException("Download failed for "+dep.name);
         System.out.println("Downloaded "+filename+", extracting...");
         Path libs = Executable.workdir.resolve("spcache");
-        if (InOut.Unpack(archive, libs, InOut.SOURCEMOD_ARCHIVE_ROOT, InOut::FileExtractFilter)==0)
+        if (ArchiveIO.Unpack(archive, libs, ArchiveIO.SOURCEMOD_ARCHIVE_ROOT, ArchiveIO::FileExtractFilter)==0)
             throw new IOException("Failed to extract "+filename);
         Files.deleteIfExists(archive);
         return true;

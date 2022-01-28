@@ -5,7 +5,8 @@ import com.dosmike.spsauce.Plugin;
 import com.dosmike.spsauce.Task;
 import com.dosmike.spsauce.am.AMSource;
 import com.dosmike.spsauce.script.PluginLock;
-import com.dosmike.spsauce.utils.InOut;
+import com.dosmike.spsauce.utils.ArchiveIO;
+import com.dosmike.spsauce.utils.BaseIO;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -38,15 +39,15 @@ public class SourceModTask implements Task {
         boolean latest = build.equals("latest");
         String target = null, fname = null;
         if (latest) {
-            HttpURLConnection con = InOut.PrepareConnection(baseUrl+"sourcemod-latest-"+Executable.OS.name().toLowerCase());
-            InOut.CheckHTTPCode(con);
+            HttpURLConnection con = BaseIO.PrepareConnection(baseUrl+"sourcemod-latest-"+Executable.OS.name().toLowerCase());
+            BaseIO.CheckHTTPCode(con);
             try (BufferedReader br = new BufferedReader(new InputStreamReader(con.getInputStream()))) {
                 fname = br.readLine();
                 target = baseUrl + fname;
             }
         } else {
-            HttpURLConnection con = InOut.PrepareConnection(baseUrl);
-            InOut.CheckHTTPCode(con);
+            HttpURLConnection con = BaseIO.PrepareConnection(baseUrl);
+            BaseIO.CheckHTTPCode(con);
             Document doc = Jsoup.parse(con.getInputStream(), "UTF-8", baseUrl);
             for (Element e : doc.select("li a")) {
                 if (e.text().contains("-git" + build + "-") && e.text().contains(Executable.OS.name().toLowerCase())) {
@@ -57,13 +58,13 @@ public class SourceModTask implements Task {
         }
         if (target == null) throw new IOException("Could not locate SourceMod");
         Path archive = Paths.get("spcache", "download", fname);
-        InOut.MakeDirectories(Executable.workdir, archive.getParent());
+        BaseIO.MakeDirectories(Executable.workdir, archive.getParent());
         archive = Executable.workdir.resolve(archive);
         if (!Files.exists(archive)) {
             AMSource.waitNextRequest();
-            InOut.DownloadURL(target, archive, null, null);
+            BaseIO.DownloadURL(target, archive, null, null);
         }
-        if (InOut.Unpack(archive, Executable.workdir.resolve("spcache"), InOut.SOURCEMOD_ARCHIVE_ROOT, null)==0)
+        if (ArchiveIO.Unpack(archive, Executable.workdir.resolve("spcache"), ArchiveIO.SOURCEMOD_ARCHIVE_ROOT, null)==0)
             throw new IOException("Unpacking SourceMod failed!");
         else {
             Files.deleteIfExists(archive);

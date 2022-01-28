@@ -4,7 +4,8 @@ import com.dosmike.spsauce.Executable;
 import com.dosmike.spsauce.Plugin;
 import com.dosmike.spsauce.PluginSource;
 import com.dosmike.spsauce.am.SourceCluster;
-import com.dosmike.spsauce.utils.InOut;
+import com.dosmike.spsauce.utils.ArchiveIO;
+import com.dosmike.spsauce.utils.BaseIO;
 import com.dosmike.spsauce.utils.Ref;
 
 import java.io.File;
@@ -19,9 +20,9 @@ public class DirectSource implements PluginSource {
     @Override
     public Plugin search(String... criteria) throws IOException {
         if (criteria.length != 1 || !criteria[0].startsWith("http")) throw new IllegalArgumentException("Raw source requires url");
-        HttpURLConnection con = InOut.PrepareConnection(criteria[0]);
+        HttpURLConnection con = BaseIO.PrepareConnection(criteria[0]);
         con.setRequestMethod("HEAD");
-        InOut.CheckHTTPCode(con);
+        BaseIO.CheckHTTPCode(con);
         Plugin data = new Plugin();
         data.name = String.format("RawFile %08X", criteria[0].hashCode());
         data.homepage = criteria[0];
@@ -32,7 +33,7 @@ public class DirectSource implements PluginSource {
                 .map(e->String.join(";",e.getValue())).findFirst().orElse(null);
         String filename;
         if (info != null) {
-            filename = InOut.ContentDispositionFilename(info);
+            filename = BaseIO.ContentDispositionFilename(info);
         } else {
             String[] parts = con.getURL().getPath().split("/");
             filename = parts[parts.length-1];
@@ -54,14 +55,14 @@ public class DirectSource implements PluginSource {
         if (dep.packageurl != null) {
             Ref<String> filename = new Ref<>();
             Path archive = Executable.workdir.resolve(Paths.get("spcache", "download", "."));
-            InOut.MakeDirectories(Executable.workdir, Paths.get("spcache", "download"));
-            InOut.DownloadURL(dep.packageurl, archive, null, filename);
+            BaseIO.MakeDirectories(Executable.workdir, Paths.get("spcache", "download"));
+            BaseIO.DownloadURL(dep.packageurl, archive, null, filename);
             if (!Files.exists(archive))
                 throw new IOException("Download failed for "+dep.name);
             System.out.println("Downloaded "+filename.it +", extracting...");
             archive = archive.getParent().resolve(filename.it).normalize();
             Path libs = Executable.workdir.resolve("spcache");
-           if (InOut.Unpack(archive, libs, InOut.SOURCEMOD_ARCHIVE_ROOT, InOut::FileExtractFilter) == 0)
+           if (ArchiveIO.Unpack(archive, libs, ArchiveIO.SOURCEMOD_ARCHIVE_ROOT, ArchiveIO::FileExtractFilter) == 0)
                 throw new IOException("Cannot patch non-existing file, please ensure patches are applied after dependencies");
             Files.deleteIfExists(archive);
             return true;
@@ -73,10 +74,10 @@ public class DirectSource implements PluginSource {
                 Path torel = dep.amattachments.estimateTarget(i);
                 if (torel != null) {
                     Path toabs = libs.resolve(torel);
-                    if (!InOut.FileExtractFilter(toabs)) continue;
-                    InOut.MakeDirectories(libs, torel.getParent());
+                    if (!ArchiveIO.FileExtractFilter(toabs)) continue;
+                    BaseIO.MakeDirectories(libs, torel.getParent());
                     try {
-                        InOut.DownloadURL(dep.amattachments.getUrl(i), toabs, null, filename);
+                        BaseIO.DownloadURL(dep.amattachments.getUrl(i), toabs, null, filename);
                         System.out.println("Downloaded "+filename.it);
                         downloaded++;
                     } catch (IOException ex) {

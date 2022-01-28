@@ -50,11 +50,10 @@ public class Executable {
             ArgParser.Parse(args);
             if (ArgParser.GetStringArgs().isEmpty()) {
                 selfScript = Paths.get(".", "sp.sauce").toAbsolutePath().normalize();
-                workdir = selfScript.getParent();
             } else {
                 selfScript = Paths.get(ArgParser.GetStringArgs().get(0)).toAbsolutePath().normalize();
-                workdir = selfScript.getParent();
             }
+            workdir = selfScript.getParent();
             DetectOS();
 
             if (ArgParser.IsFlagSet(fInteractive) || ArgParser.IsFlagSet(fInteractiveBatch)) {

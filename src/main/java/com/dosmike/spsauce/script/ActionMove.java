@@ -1,6 +1,6 @@
 package com.dosmike.spsauce.script;
 
-import com.dosmike.spsauce.utils.InOut;
+import com.dosmike.spsauce.utils.BaseIO;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -12,7 +12,7 @@ public class ActionMove implements ScriptAction {
     Path from, to;
     BuildScript context;
 
-    InOut.ReplaceFlag replace;
+    BaseIO.ReplaceFlag replace;
     boolean copy;
 
     private static final Pattern replaceRule = Pattern.compile("\\s+replace\\s+(\\w+)$");
@@ -24,19 +24,19 @@ public class ActionMove implements ScriptAction {
         if (matcher.find()) {
             String replaceType = matcher.group(1);
             if ("all".equalsIgnoreCase(replaceType) || "any".equalsIgnoreCase(replaceType)) {
-                replace = InOut.ReplaceFlag.All;
+                replace = BaseIO.ReplaceFlag.All;
             } else if ("older".equalsIgnoreCase(replaceType)) {
-                replace = InOut.ReplaceFlag.Older;
+                replace = BaseIO.ReplaceFlag.Older;
             } else if ("skip".equalsIgnoreCase(replaceType) || "none".equalsIgnoreCase(replaceType)) {
-                replace = InOut.ReplaceFlag.Skip;
+                replace = BaseIO.ReplaceFlag.Skip;
             } else if ("error".equalsIgnoreCase(replaceType) || "fail".equalsIgnoreCase(replaceType)) {
-                replace = InOut.ReplaceFlag.Error;
+                replace = BaseIO.ReplaceFlag.Error;
             } else {
                 throw new RuntimeException("Unknown replace condition: "+replaceType);
             }
             //strip replace filter from the input
             location = location.substring(0,matcher.start());
-        } else replace = InOut.ReplaceFlag.Error;
+        } else replace = BaseIO.ReplaceFlag.Error;
 
         String[] tmp = location.split(":");
         this.from = Paths.get(tmp[0].trim()).toAbsolutePath().normalize();
@@ -45,6 +45,6 @@ public class ActionMove implements ScriptAction {
 
     @Override
     public void run() throws Throwable {
-        context.taskList.and(()-> InOut.MoveFiles(from,to,!copy,replace) );
+        context.taskList.and(()-> BaseIO.MoveFiles(from,to,!copy,replace) );
     }
 }

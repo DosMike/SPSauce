@@ -1,7 +1,7 @@
 package com.dosmike.spsauce.script;
 
 import com.dosmike.spsauce.Executable;
-import com.dosmike.spsauce.utils.InOut;
+import com.dosmike.spsauce.utils.BaseIO;
 
 import java.nio.file.Paths;
 
@@ -17,6 +17,6 @@ public class ActionMkdir implements ScriptAction {
 
     @Override
     public void run() throws Throwable {
-        context.taskList.and(()-> InOut.MakeDirectories(Executable.workdir, Paths.get(directory)) );
+        context.taskList.and(()-> BaseIO.MakeDirectories(Executable.workdir, Paths.get(directory)) );
     }
 }
