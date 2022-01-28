@@ -1,7 +1,7 @@
 @echo off
 rem check if java is installed. this is a java application so proceeding
 rem without makes no sense
-where java >null 2>&1
+where java >nul 2>&1
 if %errorlevel% NEQ 0 (
  echo Could not find Java - SPSauce requires Java 8+
  echo You can get Java at https://adoptopenjdk.net
