@@ -71,9 +71,13 @@ public class BuildScript {
                     if (!ArgParser.IsFlagSet(Executable.fNoExec))
                         parsed.add(new ActionExec(this, line.it));
                 } else if (word.it.equalsIgnoreCase("echo")) {
-                    parsed.add(new ActionEcho(line.it,false));
+                    parsed.add(new ActionEcho(null, line.it,false));
                 } else if (word.it.equalsIgnoreCase("die")) {
-                    parsed.add(new ActionEcho(line.it,true));
+                    parsed.add(new ActionEcho(null, line.it,true));
+                } else if (word.it.equalsIgnoreCase("echo!")) {
+                    parsed.add(new ActionEcho(this, line.it,false));
+                } else if (word.it.equalsIgnoreCase("die!")) {
+                    parsed.add(new ActionEcho(this, line.it,true));
                 } else if (word.it.equalsIgnoreCase("mkdir")) {
                     parsed.add(new ActionMkdir(this, line.it));
                 } else if (word.it.equalsIgnoreCase("delete") ||
@@ -84,6 +88,8 @@ public class BuildScript {
                     parsed.add(new ActionMove(this, line.it, false));
                 } else if (word.it.equalsIgnoreCase("copy")) {
                     parsed.add(new ActionMove(this, line.it, true));
+                } else if (word.it.equalsIgnoreCase("set")) {
+                    parsed.add(new ActionSetVariable(this, line.it));
                 } else throw new UnknownInstructionException("Unknown instruction `"+word+"`");
             }
         }
@@ -112,6 +118,31 @@ public class BuildScript {
         }
     }
 
+    //a little wrapper to allow setting env values
+    private static final Map<String, String> environment = new HashMap<>();
+    public static String getEnvValue(String key) {
+        return environment.containsKey(key) ? environment.get(key) : System.getenv(key);
+    }
+    public static void setEnvValue(String key, String value) {
+        if (value==null||value.isEmpty()) environment.remove(key);
+        else environment.put(key, value);
+    }
+    public static void applyEnvironment(ProcessBuilder subProcess) {
+        for (Map.Entry<String, String> entry : environment.entrySet()) {
+            try {
+                subProcess.environment().put(entry.getKey(), entry.getValue());
+            } catch (UnsupportedOperationException | IllegalArgumentException e) {
+                System.out.println("Could not set env variable '" + entry.getKey() + "'");
+            }
+        }
+    }
+    //and a wrapper to overshadow arg flags
+    private static final Map<String, String> variable = new HashMap<>();
+    public static void setVariable(String key, String value) {
+        if (value==null||value.isEmpty()) variable.remove(key);
+        else variable.put(key, value);
+    }
+
     static Pattern argpattern = Pattern.compile("([%$])\\{(\\w+)}");
     private static String escapeValueReplacement(String string) {
         return string.replace("\\","\\\\").replace("$","\\$");
@@ -124,10 +155,13 @@ public class BuildScript {
             if (m.group(2).equalsIgnoreCase("cwd")||m.group(2).equalsIgnoreCase("cd")) {
                 m.appendReplacement(r, escapeValueReplacement(Executable.workdir.toString()));
             } else if (m.group(1).equals("$")) {
-                String value = System.getenv(m.group(2));
+                String value = getEnvValue(m.group(2));
                 if (value==null) throw new RuntimeException("The specified environment variable was not set");
                 if (value.isEmpty()) throw new RuntimeException("The specified environment variable is empty");
                 m.appendReplacement(r, escapeValueReplacement(value));
+            } else if (variable.containsKey(m.group(2))) {
+                //as %var, meant to act like args, can overshadow args
+                m.appendReplacement(r, escapeValueReplacement(variable.get(m.group(2))));
             } else {
                 ArgParser.Flag f = ArgParser.FindFlagByString("-"+m.group(2));
                 if (f==null) throw new RuntimeException("Argument was not specified: "+m.group(2));
@@ -139,6 +173,15 @@ public class BuildScript {
         }
         m.appendTail(r);
         return r.toString();
+    }
+    public static void defineRef(String name, String value) {
+        Matcher m = argpattern.matcher(name);
+        if (!m.matches()) throw new IllegalArgumentException("Malformed variable name '"+name+"'");
+        if (m.group(1).equals("$")) {
+            setEnvValue(m.group(2), value);
+        } else {
+            setVariable(m.group(2), value);
+        }
     }
 
 }

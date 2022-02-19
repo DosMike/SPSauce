@@ -2,6 +2,7 @@ package com.dosmike.spsauce.tasks;
 
 import com.dosmike.spsauce.Executable;
 import com.dosmike.spsauce.Task;
+import com.dosmike.spsauce.script.BuildScript;
 import com.dosmike.spsauce.utils.BaseIO;
 import com.dosmike.spsauce.utils.Nullable;
 
@@ -48,6 +49,7 @@ public class CloneTask implements Task {
     private void call(Path cwd, String... cmd) throws IOException, InterruptedException {
         ProcessBuilder pb = new ProcessBuilder(cmd);
         pb.directory(cwd.toFile());
+        BuildScript.applyEnvironment(pb);
         pb.inheritIO();
         Process process = pb.start();
         if (process.waitFor()!=0) throw new RuntimeException("Execution failed!");

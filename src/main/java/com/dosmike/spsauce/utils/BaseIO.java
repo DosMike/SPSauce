@@ -98,7 +98,7 @@ public class BaseIO {
         connection.disconnect();
         return baos.toString();
     }
-    //enregion
+    //endregion
 
     //region FileSystem
     public static boolean ValidateFile(Path file, String hashMethod, String hashString) throws IOException {
@@ -119,6 +119,13 @@ public class BaseIO {
             for (byte b : hashData) sb.append(String.format("%02X", b));
             return hashString.equalsIgnoreCase(sb.toString());
         }
+    }
+
+    public static String ReadFileContent(Path base, Path then) throws IOException {
+        base = base.toAbsolutePath().normalize();
+        Path target = base.resolve(then).toAbsolutePath().normalize();
+        if (!target.startsWith(base)) throw new IOException("Illegal target directory, is walking outside the base");
+        return String.join(System.lineSeparator(), Files.readAllLines(target));
     }
 
     public static void MakeDirectories(Path base, Path then) throws IOException {
