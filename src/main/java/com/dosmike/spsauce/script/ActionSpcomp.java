@@ -14,7 +14,6 @@ public class ActionSpcomp implements ScriptAction {
     @Override
     public void run() throws Throwable {
         String[] args = ActionExec.translateCommandline(commandLine);
-        for (int i=0;i<args.length;i++) args[i]=BuildScript.injectRefs(args[i]);
         context.taskList.and(new CompileTask(args));
     }
 }

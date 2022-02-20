@@ -2,18 +2,21 @@ package com.dosmike.spsauce.tasks;
 
 import com.dosmike.spsauce.Executable;
 import com.dosmike.spsauce.Task;
+import com.dosmike.spsauce.script.BuildScript;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class CompileTask implements Task {
 
     Path compilerPath;
-    List<String> args;
+    List<String> args, userArgs;
     public CompileTask(String[] args) {
         Path baseDir = Executable.workdir.resolve(Paths.get("spcache", "addons", "sourcemod", "scripting"));
         if (Executable.OS == Executable.OperatingSystem.Windows)
@@ -32,7 +35,7 @@ public class CompileTask implements Task {
             this.args.add("-i"+ cwdRelative(include));
         if (Files.isDirectory(include = Executable.workdir.resolve(Paths.get("addons","sourcemod","scripting","include"))))
             this.args.add("-i"+ cwdRelative(include));
-        this.args.addAll(Arrays.asList(args));
+        this.userArgs = Arrays.asList(args);
     }
 
     private Path cwdRelative(Path p) {
@@ -45,7 +48,9 @@ public class CompileTask implements Task {
 
     @Override
     public void run() throws Throwable {
-        ProcessBuilder pb = new ProcessBuilder(args);
+        ArrayList<String> cmd = new ArrayList<>(args);
+        cmd.addAll(args.stream().map(BuildScript::injectRefs).collect(Collectors.toList()));
+        ProcessBuilder pb = new ProcessBuilder(cmd);
         pb.directory(Executable.workdir.toFile());
         pb.inheritIO();
         Process process = pb.start();

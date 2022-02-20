@@ -1,26 +1,32 @@
 package com.dosmike.spsauce.script;
 
+import com.dosmike.spsauce.Authorization;
 import com.dosmike.spsauce.github.HubAuthorization;
 
 import java.util.Arrays;
 
 public class ActionAuth implements ScriptAction {
 
-    ScriptAction actual;
-    boolean dontFail;
+    interface AuthFactory {
+        Authorization auth() throws Throwable;
+        String name();
+    }
+
+    AuthFactory factory;
+    boolean dotry;
 
     ActionAuth(BuildScript context, String provider, String[] args) {
         if (provider.equalsIgnoreCase("try")) {
             if (args.length == 0) throw new RuntimeException("No authorization specified");
-            dontFail = true;
+            dotry = true;
             provider = args[0];
             args = Arrays.copyOfRange(args, 1, args.length);
-        } else dontFail = false;
+        } else dotry = false;
 
         if (provider.equalsIgnoreCase("github")) {
             if (args.length < 1 || args[0].isEmpty()) throw new RuntimeException("Not enough arguments for `auth github`: <token> [login] expected");
             else if (args.length > 2) throw new RuntimeException("Too many arguments for `auth github`: <token> [login] expected");
-            actual = new GitHub(context, args[0], args.length>1?args[1]:null);
+            factory = new GitHub(context, args[0], args.length>1?args[1]:null);
         } else {
             throw new RuntimeException("Authorization not supported for `auth "+provider+"`");
         }
@@ -28,18 +34,27 @@ public class ActionAuth implements ScriptAction {
 
     @Override
     public void run() throws Throwable {
-        if (dontFail) {
-            try {
-                actual.run();
-            } catch (Throwable t) {
-                System.out.println("Authorization failed for "+actual.getClass().getSimpleName()+": "+t.getMessage());
-            }
-        } else {
-            actual.run();
+        boolean wasAuthed = BuildScript.authorizationMap.containsKey(factory.name().toLowerCase());
+        System.out.print("Authenticating "+factory.name()+"... ");
+        try {
+            BuildScript.authorizationMap.put(factory.name().toLowerCase(), factory.auth());
+            if (wasAuthed)
+                System.out.print("Updated!");
+            else
+                System.out.print("Successful!");
+        } catch (Throwable t) {
+            if (!dotry)
+                throw t;
+            else if (wasAuthed)
+                System.out.print("Failed - Retaining previous: "+t.getMessage());
+            else
+                System.out.print("Failed: "+t.getMessage());
+        } finally {
+            System.out.println();
         }
     }
 
-    private static class GitHub implements ScriptAction {
+    private static class GitHub implements AuthFactory {
         String pat, login=null;
         BuildScript ctx;
         public GitHub(BuildScript context, String pat, String login) {
@@ -48,9 +63,13 @@ public class ActionAuth implements ScriptAction {
             this.ctx = context;
         }
         @Override
-        public void run() throws Throwable {
-            System.out.println("Authenticating GitHub");
-            ctx.authorizationMap.put("github", new HubAuthorization(pat, login));
+        public Authorization auth() throws Throwable {
+            return new HubAuthorization(pat, login);
+        }
+
+        @Override
+        public String name() {
+            return "GitHub";
         }
     }
 }

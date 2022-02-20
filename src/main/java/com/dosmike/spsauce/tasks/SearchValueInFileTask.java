@@ -25,7 +25,7 @@ public class SearchValueInFileTask implements Task {
 
     @Override
     public void run() throws Throwable {
-        Matcher matcher = search.matcher(BaseIO.ReadFileContent(Executable.workdir, Paths.get(target)));
+        Matcher matcher = search.matcher(BaseIO.ReadFileContent(Executable.workdir, Paths.get(BuildScript.injectRefs(target))));
         StringBuilder sb = new StringBuilder();
         if (matcher.find()) {
             //dynamically generate "replacement" string to store in variable

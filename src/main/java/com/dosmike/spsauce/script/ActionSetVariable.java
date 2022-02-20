@@ -1,5 +1,6 @@
 package com.dosmike.spsauce.script;
 
+import com.dosmike.spsauce.Task;
 import com.dosmike.spsauce.tasks.SearchValueInFileTask;
 import com.dosmike.spsauce.utils.Nullable;
 import com.dosmike.spsauce.utils.Ref;
@@ -9,48 +10,58 @@ import java.util.regex.Pattern;
 public class ActionSetVariable implements ScriptAction {
 
     BuildScript context;
-    String variable;
-    String target;
-    Pattern search;
-    String value;
+    Task task;
 
     public ActionSetVariable(BuildScript context, String argstring) {
         Ref<String> args = Ref.of(argstring);
         this.context = context;
+        String variable;
+        String target;
+        Pattern search;
+        String value;
 
-        this.variable = cleanArg(breakArgs(args));
-        if (this.variable == null || this.variable.isEmpty())
-            throw new IllegalArgumentException("Not enough arguments, variable expected! Syntax: set <variable> as <format> from <file> <regex>");
+        variable = cleanArg(breakArgs(args));
+        if (variable == null || variable.isEmpty())
+            throw new IllegalArgumentException("Not enough arguments, variable expected!");
         if (!variable.matches("^[$%]\\{\\w+}"))
             throw new IllegalArgumentException("Invalid variable name '"+variable+"'");
 
         String kwd = breakArgs(args);
         if (kwd == null)
-            throw new IllegalArgumentException("Unexpected end of line, 'as' or 'from' expected! Syntax: set <variable> [as <format>] from <file> <regex>");
+            throw new IllegalArgumentException("Unexpected end of line, 'as' or 'from' expected!");
 
-        if ("as".equalsIgnoreCase(kwd)) {
-            this.value = cleanArg(breakArgs(args));
-            if (this.value == null)
-                throw new IllegalArgumentException("Unexpected end of line, format expected! Syntax: set <variable> [as <format>] from <file> <regex>");
-            kwd = breakArgs(args);
-            if (kwd == null)
-                throw new IllegalArgumentException("Unexpected end of line, 'from' expected! Syntax: set <variable> [as <format>] from <file> <regex>");
-        } else this.value = "\\0";
+        if ("to".equalsIgnoreCase(kwd)) {
+            //"literal" value
+            final String bound = args.it.trim();
+            task = ()->BuildScript.setVariable(variable, BuildScript.injectRefs(bound));
+        } else {
+            //value from file
+            if ("as".equalsIgnoreCase(kwd)) {
+                value = cleanArg(breakArgs(args));
+                if (value == null)
+                    throw new IllegalArgumentException("Unexpected end of line, format expected!");
+                kwd = breakArgs(args);
+                if (kwd == null)
+                    throw new IllegalArgumentException("Unexpected end of line, 'from' expected!");
+            } else value = "\\0";
 
-        if (!"from".equalsIgnoreCase(kwd))
-            throw new IllegalArgumentException("Illegal keyword '"+kwd+"'! Syntax: set <variable> [as <format>] from <file> <regex>");
-        this.target = cleanArg(breakArgs(args));
-        if (this.target == null)
-            throw new IllegalArgumentException("Unexpected end of line, file expected! Syntax: set <variable> [as <format>] from <file> <regex>");
-        String pattern = cleanArg(breakArgs(args));
-        if (pattern == null)
-            throw new IllegalArgumentException("Unexpected end of line, regex pattern expected! Syntax: set <variable> [as <format>] from <file> <regex>");
-        this.search = Pattern.compile(pattern, Pattern.MULTILINE);
+            if (!"from".equalsIgnoreCase(kwd))
+                throw new IllegalArgumentException("Illegal keyword '" + kwd + "'!");
+            target = cleanArg(breakArgs(args));
+            if (target == null)
+                throw new IllegalArgumentException("Unexpected end of line, file expected!");
+            String pattern = cleanArg(breakArgs(args));
+            if (pattern == null)
+                throw new IllegalArgumentException("Unexpected end of line, regex pattern expected!");
+            search = Pattern.compile(pattern, Pattern.MULTILINE);
+
+            task = new SearchValueInFileTask(variable, target, search, value);
+        }
     }
 
     @Override
     public void run() throws Throwable {
-        context.taskList.and(new SearchValueInFileTask(variable, target, search, value));
+        context.taskList.and(task);
     }
 
     private String cleanArg(@Nullable String arg) {

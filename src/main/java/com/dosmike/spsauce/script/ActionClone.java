@@ -28,9 +28,6 @@ public class ActionClone implements ScriptAction {
 
     @Override
     public void run() throws Throwable {
-        Path path = Paths.get(BuildScript.injectRefs(dest)).toAbsolutePath().normalize();
-        if (!path.startsWith(Executable.workdir))
-            throw new RuntimeException("You can only clone into subdirectories!");
-        context.taskList.and(new CloneTask(source,Executable.workdir.relativize(path),BuildScript.injectRefs(branch)));
+        context.taskList.and(new CloneTask(source,dest,branch));
     }
 }

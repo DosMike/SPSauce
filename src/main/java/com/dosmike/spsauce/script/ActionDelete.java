@@ -16,6 +16,6 @@ public class ActionDelete implements ScriptAction {
 
     @Override
     public void run() throws Throwable {
-        context.taskList.and(()-> BaseIO.RemoveRecursive(Paths.get(target)) );
+        context.taskList.and(()-> BaseIO.RemoveRecursive(Paths.get(BuildScript.injectRefs(target))) );
     }
 }
