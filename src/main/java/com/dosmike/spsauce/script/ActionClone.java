@@ -1,10 +1,6 @@
 package com.dosmike.spsauce.script;
 
-import com.dosmike.spsauce.Executable;
 import com.dosmike.spsauce.tasks.CloneTask;
-
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 public class ActionClone implements ScriptAction {
 

@@ -4,9 +4,7 @@ import com.dosmike.spsauce.Executable;
 import com.dosmike.spsauce.Task;
 import com.dosmike.spsauce.script.BuildScript;
 
-import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 

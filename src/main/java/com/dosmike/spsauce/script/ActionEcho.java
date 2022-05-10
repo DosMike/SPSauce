@@ -9,6 +9,7 @@ public class ActionEcho implements ScriptAction {
     BuildScript context;
 
     public ActionEcho(@Nullable BuildScript context, String message, boolean terminate) {
+        this.context = context;
         this.message = message;
         this.die = terminate;
     }

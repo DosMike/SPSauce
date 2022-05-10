@@ -27,7 +27,7 @@ public class CompileTask implements Task {
             compilerPath = baseDir.resolve("spcomp");
         this.args = new LinkedList<>();
         this.args.add(compilerPath.toString());
-        this.args.add("-i"+ cwdRelative(baseDir.resolve("include")));
+
         Path include;
         if (Files.isDirectory(include = Executable.workdir.resolve(Paths.get("include"))))
             this.args.add("-i"+ cwdRelative(include));
@@ -49,7 +49,7 @@ public class CompileTask implements Task {
     @Override
     public void run() throws Throwable {
         ArrayList<String> cmd = new ArrayList<>(args);
-        cmd.addAll(args.stream().map(BuildScript::injectRefs).collect(Collectors.toList()));
+        cmd.addAll(userArgs.stream().map(BuildScript::injectRefs).collect(Collectors.toList()));
         ProcessBuilder pb = new ProcessBuilder(cmd);
         pb.directory(Executable.workdir.toFile());
         pb.inheritIO();
