@@ -37,9 +37,8 @@ public class AMRelease extends ReleaseTask {
         Document editor = web.query(editUrl, null);
         web.wait(WebSoup.DEFAULT_WAIT);
         //pull up attachment editor
-        //  get the first quoted value in the onClick action. this will be the url normally opened in a new window
-        String attachUrl = Objects.requireNonNull(editor.getElementById("manage_attachments_button"))
-                .attr("onclick").split("['\"]")[1];
+        //  keep in mind that we're in no-script land
+        String attachUrl = Objects.requireNonNull(editor.selectFirst("a[target=manageattach]")).attr("href");
         Document attachEditor = web.query(attachUrl, null);
         attachUrl = Objects.requireNonNull(attachEditor.selectFirst("form")).attr("action");
         //delete all existing attachments
@@ -55,7 +54,7 @@ public class AMRelease extends ReleaseTask {
             form.add("attachment[]", WebSoup.MultiPartFormValue.EMPTY_FILE);
             form.add("attachment[]", WebSoup.MultiPartFormValue.EMPTY_FILE);
             form.add("attachment[]", WebSoup.MultiPartFormValue.EMPTY_FILE);
-            attachEditor = web.multiPartFormData(attachUrl, form);
+            attachEditor = web.submitForm(attachUrl, form);
             web.wait(WebSoup.DEFAULT_WAIT);
         }
         //upload fileset 3-file wise
@@ -86,7 +85,7 @@ public class AMRelease extends ReleaseTask {
                     for (Path p : pack) form.add("attachment[]", p); pack.clear();
                     form.put(element);
                     form.put(attachEditor.selectFirst("form input[name=upload]"));
-                    attachEditor = web.multiPartFormData(attachUrl, form);
+                    attachEditor = web.submitForm(attachUrl, form);
                     web.wait(WebSoup.DEFAULT_WAIT);
                 }
             }
@@ -97,18 +96,20 @@ public class AMRelease extends ReleaseTask {
             for (Path p : pack) form.add("attachment[]", p); pack.clear();
             form.put(element);
             form.put(attachEditor.selectFirst("form input[name=upload]"));
-            web.multiPartFormData(attachUrl, form);
+            web.submitForm(attachUrl, form);
             web.wait(WebSoup.DEFAULT_WAIT);
         }
         //pull form from main editor window
-        WebSoup.MultiPartForm form = new WebSoup.MultiPartForm();
         String actionUrl = Objects.requireNonNull(editor.selectFirst("form[name=vbform]")).attr("action");
         if (actionUrl.isEmpty()) throw new IllegalStateException("Can not update version from post editor");
-        for (Element e : editor.select("form[name=vbform] input")) form.put(e);
-        form.set("message", Objects.requireNonNull(editor.selectFirst("form[name=vbform] textarea")).val());
+        //don't add all submit buttons, only actual inputs and hidden stuff for now
+        WebSoup.MultiPartForm form = new WebSoup.MultiPartForm(editor.selectFirst("form[name=vbform]"));
+        //set/replace version information
         form.set("reason", "Automated Plugin Update to "+version);
         form.set("version", version);
-        web.multiPartFormData(actionUrl, form);
+        //"use" the save button
+        form.put(editor.getElementById("vB_Editor_001_save"));
+        web.queryForm(actionUrl, form);
     }
 
     private WebSoup.MultiPartForm prepAttachmentEditForm(Document document) {

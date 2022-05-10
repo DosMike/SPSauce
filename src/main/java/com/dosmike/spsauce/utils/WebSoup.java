@@ -98,20 +98,15 @@ public class WebSoup {
         return Jsoup.parse(connection.getInputStream(),charset,where);
     }
 
-    public Document query(String relative, Map<String,String> postData) throws IOException {
-        //to this url
-        HttpURLConnection con = coreOpenConnection(relative, postData==null ? null : "application/x-www-form-urlencoded");
-        //write post data, sets content length
-        if (postData != null) {
-            OutputStream out = con.getOutputStream();
-            out.write(toUrlEncode(postData).getBytes(StandardCharsets.UTF_8));
-            out.flush();
-        }
-        return coreHandleResponse(relative, con);
-    }
-
     public static class MultiPartForm extends HashMap<String,List<MultiPartFormValue>> {
         public MultiPartForm() { super(); }
+        public MultiPartForm(Element formElement) {
+            if (formElement != null) {
+                if (!"form".equalsIgnoreCase(formElement.tagName()))
+                    throw new IllegalArgumentException("MultiPartForm constructor requires <form>");
+                put(formElement);
+            }
+        }
 
         public List<MultiPartFormValue> add(String key, String value) {
             return add(key, new MultiPartFormValue(value));
@@ -160,14 +155,22 @@ public class WebSoup {
                 return set(key, value);
         }
         //copy document input element name and value. for compat and simplicity, this will ignore null-arguments
-        public List<MultiPartFormValue> put(@Nullable Element element) {
-            if (element == null) return null; //Jsoup returns null if an element was not found by e.g. selectFirst
-            if (!element.tagName().equalsIgnoreCase("input"))
-                throw new IllegalArgumentException("Only input elements are supported");
+        // allowed element tags: input, textarea, select, form (will not read input[type=submit])
+        public void put(@Nullable Element element) {
+            if (element == null) return;
             String name = element.attr("name");
-            String value = element.val();
-            assert !name.isEmpty();
-            return put(name, value);
+            String value;
+            if (element.tagName().equalsIgnoreCase("input") || element.tagName().equalsIgnoreCase("textarea")) {
+                value = element.val();
+                assert !name.isEmpty();
+            } else if (element.tagName().equalsIgnoreCase("select")) {
+                Element selected = element.selectFirst("option[selected]");
+                value = selected == null ? "" : selected.attr("value");
+            } else if (element.tagName().equalsIgnoreCase("form")) {
+                element.select("input:not([type=submit]),textarea,select").forEach(this::put);
+                return;
+            } else throw new IllegalArgumentException("Only input elements are supported");
+            put(name, value);
         }
     }
 
@@ -202,7 +205,8 @@ public class WebSoup {
             return oFilename;
         }
         String getContentType() throws IOException {
-            if (!(value instanceof Path)) throw new IllegalStateException("Value is not a file");
+            if (!(value instanceof Path) && (oFilename == null))
+                throw new IllegalStateException("Value is not a file");
             if (oContentType != null) return oContentType;
             String mime = Files.probeContentType((Path) value);
             if (mime == null) {
@@ -217,9 +221,39 @@ public class WebSoup {
             } else return oContentType=mime;
         }
         public static final MultiPartFormValue EMPTY_FILE = new MultiPartFormValue("","","application/octet-stream");
+
+        @Override
+        public String toString() {
+            return value.toString();
+        }
     }
 
-    public Document multiPartFormData(String relative, Map<String,List<MultiPartFormValue>> postData) throws IOException {
+    public Document query(String relative, Map<String,String> postData) throws IOException {
+        //to this url
+        HttpURLConnection con = coreOpenConnection(relative, postData==null ? null : "application/x-www-form-urlencoded");
+        //write post data, sets content length
+        if (postData != null) {
+            OutputStream out = con.getOutputStream();
+            out.write(toUrlEncode(postData).getBytes(StandardCharsets.UTF_8));
+            out.flush();
+        }
+        return coreHandleResponse(relative, con);
+    }
+    /** use a multipart form as that's more convenient, and convert it to url form data. THIS STILL USES POST.
+     * Note: If you got the awful idea to send actual data via GET request, use toUrlEncode and concat to the url. */
+    public Document queryForm(String relative, Map<String,List<MultiPartFormValue>> postData) throws IOException {
+        //to this url
+        HttpURLConnection con = coreOpenConnection(relative, postData==null ? null : "application/x-www-form-urlencoded");
+        //write post data, sets content length
+        if (postData != null) {
+            OutputStream out = con.getOutputStream();
+            out.write(toUrlEncodeForm(postData).getBytes(StandardCharsets.UTF_8));
+            out.flush();
+        }
+        return coreHandleResponse(relative, con);
+    }
+
+    public Document submitForm(String relative, Map<String,List<MultiPartFormValue>> postData) throws IOException {
         //the boundary just has to be a long unique string leading a line that is unlikely to appear in any value
         StringBuilder boundary = new StringBuilder(64);
         boundary.append("------------------------");
@@ -245,6 +279,18 @@ public class WebSoup {
             String kv = URLEncoder.encode(e.getKey(), "UTF-8")+"="+URLEncoder.encode(e.getValue(), "UTF-8");
             if (concat.length() > 0) concat.append("&");
             concat.append(kv);
+        }
+        return concat.toString();
+    }
+    private String toUrlEncodeForm(Map<String,List<MultiPartFormValue>> data) throws IOException {
+        if (data == null) return "";
+        StringBuilder concat= new StringBuilder();
+        for (Map.Entry<String, List<MultiPartFormValue>> e : data.entrySet()) {
+            for (MultiPartFormValue value : e.getValue()) {
+                String kv = URLEncoder.encode(e.getKey(), "UTF-8") + "=" + URLEncoder.encode(value.toString(), "UTF-8");
+                if (concat.length() > 0) concat.append("&");
+                concat.append(kv);
+            }
         }
         return concat.toString();
     }
