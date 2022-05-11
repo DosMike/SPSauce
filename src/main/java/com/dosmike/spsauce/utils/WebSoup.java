@@ -8,7 +8,6 @@ import org.jsoup.nodes.Element;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -16,7 +15,6 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -207,18 +205,8 @@ public class WebSoup {
         String getContentType() throws IOException {
             if (!(value instanceof Path) && (oFilename == null))
                 throw new IllegalStateException("Value is not a file");
-            if (oContentType != null) return oContentType;
-            String mime = Files.probeContentType((Path) value);
-            if (mime == null) {
-                byte[] peekBuffer = new byte[2048];
-                try (InputStream in = Files.newInputStream((Path) value, StandardOpenOption.READ)) {
-                    int read = in.read(peekBuffer);
-                    //use octet stream if any of the peeked bytes appear to be non-ascii
-                    // since java bytes are signed and ascii never uses the high bit, non-ascii chars appear negative
-                    for (int i = 0; i < read; i++) if (peekBuffer[i] <= 0) return oContentType="application/octet-stream";
-                    return oContentType="text/plain";
-                }
-            } else return oContentType=mime;
+            if (oContentType == null) oContentType = BaseIO.getMimeType((Path) value);
+            return oContentType;
         }
         public static final MultiPartFormValue EMPTY_FILE = new MultiPartFormValue("","","application/octet-stream");
 

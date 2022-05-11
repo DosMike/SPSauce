@@ -4,11 +4,12 @@ import com.dosmike.spsauce.Executable;
 import com.dosmike.spsauce.release.FileSet;
 import com.dosmike.spsauce.script.BuildScript;
 import com.dosmike.spsauce.tasks.ReleaseTask;
+import com.dosmike.spsauce.utils.BaseIO;
 import org.kohsuke.github.GHRelease;
 import org.kohsuke.github.GHReleaseBuilder;
+import org.kohsuke.github.GHRepository;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class HubRelease extends ReleaseTask {
@@ -48,11 +49,18 @@ public class HubRelease extends ReleaseTask {
 
         try {
             HubAuthorization auth = (HubAuthorization) BuildScript.getAuthorization("github");
-            GHReleaseBuilder releaseBuilder = auth.hub.getRepository(owner + "/" + repository).createRelease(tag);
-            if (commitish != null) releaseBuilder.commitish(commitish);
-            releaseBuilder.name("Release "+tag);
-            releaseBuilder.body("This build was automatically created by SPSauce");
-            GHRelease release = releaseBuilder.create();
+            GHRepository repo = auth.hub.getRepository(owner + "/" + repository);
+            //check if release tag exists
+            GHRelease release = repo.getReleaseByTagName(tag);
+            if (release == null) {
+                //no release with that tag yet, make one
+                GHReleaseBuilder releaseBuilder = repo.createRelease(tag);
+                if (commitish != null) releaseBuilder.commitish(commitish);
+                releaseBuilder.name("Release " + tag);
+                releaseBuilder.body("This build was automatically created by SPSauce");
+                release = releaseBuilder.create();
+            }
+            //attach files
             for (FileSet.Entry e : files.getCandidates()) {
                 if (e.isValid()) {
                     Path path = Executable.workdir.resolve(e.getProjectPath()).toAbsolutePath().normalize();
@@ -60,9 +68,7 @@ public class HubRelease extends ReleaseTask {
                         System.err.println("Unable to attach file outside of working directory to GitHub Release: "+path);
                         continue;
                     }
-                    String type = Files.probeContentType(path);
-                    if (type == null) type = "text/plain";
-                    release.uploadAsset(path.toFile(), type);
+                    release.uploadAsset(path.toFile(), BaseIO.getMimeType(path));
                 }
             }
         } catch (IOException e) {

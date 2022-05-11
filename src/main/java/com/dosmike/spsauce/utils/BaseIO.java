@@ -255,6 +255,24 @@ public class BaseIO {
         Skip,
         Error
     }
+
+    /** always returns a mime type. tries the default content probe first.
+     * if that returns empty the file is peeked for 2048 bytes and checked for ascii chars.
+     * if ascii returns text/plain otherwise application/octet-stream */
+    public static String getMimeType(Path file) throws IOException {
+        String mime = Files.probeContentType(file);
+        if (mime == null) {
+            byte[] peekBuffer = new byte[2048];
+            try (InputStream in = Files.newInputStream(file, StandardOpenOption.READ)) {
+                int read = in.read(peekBuffer);
+                //use octet stream if any of the peeked bytes appear to be non-ascii
+                // since java bytes are signed and ascii never uses the high bit, non-ascii chars appear negative
+                for (int i = 0; i < read; i++) if (peekBuffer[i] <= 0) return "application/octet-stream";
+                return "text/plain";
+            }
+        } else return mime;
+    }
+
     //endregion
 
     //region SourcePawn
