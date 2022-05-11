@@ -6,6 +6,7 @@ import com.dosmike.spsauce.tasks.ReleaseTask;
 import com.dosmike.spsauce.utils.WebSoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -32,6 +33,9 @@ public class AMRelease extends ReleaseTask {
     public void run() throws Exception {
         AMAuthorization auth = (AMAuthorization) BuildScript.getAuthorization("AlliedMods");
         WebSoup web = auth.getBrowser();
+        version = BuildScript.injectRefs(version);
+        System.out.println("└-> Patching AlliedMods forum thread "+threadId+" to version "+version);
+
         //pull up editor and upload fileset
         String editUrl = getEditUrl(auth);
         Document editor = web.query(editUrl, null);
@@ -41,14 +45,19 @@ public class AMRelease extends ReleaseTask {
         String attachUrl = Objects.requireNonNull(editor.selectFirst("a[target=manageattach]")).attr("href");
         Document attachEditor = web.query(attachUrl, null);
         attachUrl = Objects.requireNonNull(attachEditor.selectFirst("form")).attr("action");
-        //delete all existing attachments
+        //delete existing plugin related attachments
         Element element;
-        while ((element = attachEditor.selectFirst("form input[name^=delete]"))!=null) {
+        int offset=0;
+        while ((element = selectNth(attachEditor, "form input[name^=delete]", offset))!=null) {
             Element tr = element;
             while (tr.text().isEmpty()) tr = tr.parent();
             String filename = Objects.requireNonNull(tr.getElementsByTag("a").first()).text();
-            System.out.println(" - Removing old attachment `"+filename+'`');
+            if (!filename.matches("\\.(sp|inc|smx|txt|cfg|so|dll)$")) {
+                //this file is not one we will reupload (maybe asset zips), so keep it
+                offset+=1; continue;
+            }
 
+            System.out.println(" - Removing old attachment `"+filename+'`');
             WebSoup.MultiPartForm form = prepAttachmentEditForm(attachEditor);
             form.put(element);
             form.add("attachment[]", WebSoup.MultiPartFormValue.EMPTY_FILE);
@@ -112,6 +121,11 @@ public class AMRelease extends ReleaseTask {
         web.queryForm(actionUrl, form);
     }
 
+    private Element selectNth(Element parent, String query, int n) {
+        Elements all = parent.select(query);
+        if (n < all.size() && n >= 0) return all.get(n);
+        else return null;
+    }
     private WebSoup.MultiPartForm prepAttachmentEditForm(Document document) {
         WebSoup.MultiPartForm form = new WebSoup.MultiPartForm();
         form.put(document.selectFirst("form input[name=s]"));

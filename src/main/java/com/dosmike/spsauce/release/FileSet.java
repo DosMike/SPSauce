@@ -16,6 +16,7 @@ import java.util.Set;
 /**
  * This is a set of files that might POTENTIALLY exist at the end of the build process.
  * The list is collected in a templated state and fully resolved by a dependant action (For example, a release zip task).
+ * Keep in mind that a FileSet cares about plugin files, not arbitrary files. If no SPFileType can be assigned, adding fails!
  */
 public class FileSet {
 

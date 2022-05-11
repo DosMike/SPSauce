@@ -48,11 +48,7 @@ task makeRTdeps() {
 jar.dependsOn(makeRTdeps);
 
 dependencies {
-    implementation 'org.jetbrains:annotations:20.1.0'
-
-//    implementation 'org.jetbrains:annotations:22.0.0' //apache2
-//    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
-//    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
+    implementation 'org.jetbrains:annotations:22.0.0'
 
     compileOnly 'org.jsoup:jsoup:1.14.3' //MIT
 
