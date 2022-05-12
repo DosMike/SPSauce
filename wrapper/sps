@@ -1,13 +1,13 @@
 #!/bin/bash
 # check if java is installed
-if ! which java >nul ; then
+if ! which java >/dev/null ; then
   echo 'Could not find Java - SPSauce requires Java 8+'
   echo 'Please install an OpenJDK package (openjdk-8-jre)'
   echo ''
   exit 1
 fi
 # check if git is installed - depedency clone will try to use system git
-if ! which git >nul ; then
+if ! which git >/dev/null ; then
   echo 'Could not find git - Some dependencies might fail!'
   echo 'Please install the git package (git)'
   echo ''
