@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -30,7 +31,7 @@ public class FileSet {
             file = file.toAbsolutePath().normalize();
             if (Files.isSymbolicLink(file)) throw new IllegalArgumentException("Symbolic links are not supported for packing");
             this.path = Executable.workdir.relativize(file).toString();
-            this.type = BaseIO.SPFileType.from(this.path).orElseThrow(()->new IOException("This file type is not supported for packing"));
+            this.type = BaseIO.SPFileType.from(this.path).orElse(null);
         }
 
         public String getProjectFile() {
@@ -53,6 +54,8 @@ public class FileSet {
             return getInstallPath().toString();
         }
         public Path getInstallPath() {
+            if (type == null)
+                throw new RuntimeException("This file type is not supported for packing");
             Path installDir = BaseIO.resolveAgainst(Paths.get(type.getDefaultPath()), Paths.get(path));
             if (installDir == null)
                 throw new RuntimeException("Could not resolve install directory for \""+path+"\" against \""+type.getDefaultPath()+"\"");
@@ -73,6 +76,15 @@ public class FileSet {
         public boolean isValid() {
             if (!resolved) getProjectPath();
             return exists;
+        }
+        public boolean isSpFile() {
+            return type != null;
+        }
+        public String getFileExt() {
+            String filename = getProjectPath().getFileName().toString();
+            int dot=filename.lastIndexOf('.');
+            if (dot < 0) return "";
+            else return filename.substring(dot+1);
         }
     }
 

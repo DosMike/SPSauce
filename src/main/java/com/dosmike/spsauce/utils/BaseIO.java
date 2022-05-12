@@ -9,6 +9,7 @@ import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
@@ -271,6 +272,32 @@ public class BaseIO {
                 return "text/plain";
             }
         } else return mime;
+    }
+
+    public static void MakeExecutable(Path path) throws SecurityException {
+        boolean isExecutable;
+        String absolutePath = path.toAbsolutePath().toString();
+        try {
+            SecurityManager securityManager = System.getSecurityManager();
+            if (securityManager!=null) securityManager.checkExec(absolutePath);
+            isExecutable = Files.isExecutable(path);
+        } catch (SecurityException e) {
+            isExecutable = false;
+        }
+
+        if (!isExecutable) {
+            //maybe we just downloaded sourcemod? try to set the executable flag if we know how to
+            if (Executable.OS == Executable.OperatingSystem.Linux) try {
+                Files.setPosixFilePermissions(path, PosixFilePermissions.fromString("rwxr-x---"));
+            } catch (IOException e) {
+                System.err.println("Could not set owner executable flag on spcomp - Compilation will fail!");
+            } else if (!path.toFile().setExecutable(true, false)) {
+                System.err.println("Could not set owner executable flag on spcomp - Compilation will fail!");
+            }
+        }
+
+        SecurityManager securityManager = System.getSecurityManager();
+        if (securityManager!=null) securityManager.checkExec(absolutePath);
     }
 
     //endregion

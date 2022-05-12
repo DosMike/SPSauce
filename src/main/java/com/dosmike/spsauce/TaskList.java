@@ -41,9 +41,10 @@ public class TaskList {
             //join tasks
             for (CompletableFuture<Void> f : futures) f.join();
             limitedPool.shutdown();
-        } else
+        } else {
             taskList.get(stepIndex).submit(service).join();
-        stepIndex++;
+            stepIndex++;
+        }
     }
 
 }

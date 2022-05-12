@@ -1,7 +1,9 @@
 package com.dosmike.spsauce.tasks;
 
 import com.dosmike.spsauce.Task;
-import com.dosmike.spsauce.script.BuildScript;
+import com.dosmike.spsauce.tasks.luavm.JLuaOSLib;
+import com.dosmike.spsauce.tasks.luavm.JLuaSPSauceLib;
+import com.dosmike.spsauce.tasks.luavm.ReadOnlyLuaTable;
 import org.luaj.vm2.*;
 import org.luaj.vm2.compiler.LuaC;
 import org.luaj.vm2.lib.*;
@@ -29,83 +31,6 @@ public abstract class ScriptTask implements Task {
             LuaC.install(sglobals);
             LuaString.s_metatable = new ReadOnlyLuaTable(LuaString.s_metatable);
         }
-        static class ReadOnlyLuaTable extends LuaTable {
-            public ReadOnlyLuaTable(LuaValue table) {
-                presize(table.length(), 0);
-                for (Varargs n = table.next(LuaValue.NIL); !n.arg1().isnil(); n = table
-                        .next(n.arg1())) {
-                    LuaValue key = n.arg1();
-                    LuaValue value = n.arg(2);
-                    super.rawset(key, value.istable() ? new ReadOnlyLuaTable(value) : value);
-                }
-            }
-            public LuaValue setmetatable(LuaValue metatable) { return error("table is read-only"); }
-            public void set(int key, LuaValue value) { error("table is read-only"); }
-            public void rawset(int key, LuaValue value) { error("table is read-only"); }
-            public void rawset(LuaValue key, LuaValue value) { error("table is read-only"); }
-            public LuaValue remove(int pos) { return error("table is read-only"); }
-        }
-
-        static class JLuaSPSauceLib extends TwoArgFunction {
-            public JLuaSPSauceLib() {}
-            static class _getenv extends OneArgFunction {
-                @Override
-                public LuaValue call(LuaValue arg) {
-                    try {
-                        return valueOf( BuildScript.parseVariable("${" + arg.checkjstring() + "}") );
-                    } catch (IllegalArgumentException e) {
-                        return error("Env name has to be alphanumeric");
-                    } catch (RuntimeException e) {
-                        return NIL;
-                    }
-                }
-            }
-            static class _setenv extends TwoArgFunction {
-                @Override
-                public LuaValue call(LuaValue arg1, LuaValue arg2) {
-                    try {
-                        BuildScript.defineRef("${" + arg1.checkjstring() + "}", arg2.checkjstring());
-                        return NONE;
-                    } catch (IllegalArgumentException ignore) {
-                        return error("Env name has to be alphanumeric");
-                    }
-                }
-            }
-            static class _getvar extends OneArgFunction {
-                @Override
-                public LuaValue call(LuaValue arg) {
-                    try {
-                        return valueOf( BuildScript.parseVariable("%{" + arg.checkjstring() + "}") );
-                    } catch (IllegalArgumentException e) {
-                        return error("Var name has to be alphanumeric");
-                    } catch (RuntimeException e) {
-                        return NIL;
-                    }
-                }
-            }
-            static class _setvar extends TwoArgFunction {
-                @Override
-                public LuaValue call(LuaValue arg1, LuaValue arg2) {
-                    try {
-                        BuildScript.defineRef("%{" + arg1.checkjstring() + "}", arg2.checkjstring());
-                        return NONE;
-                    } catch (IllegalArgumentException ignore) {
-                        return error("Var name has to be alphanumeric");
-                    }
-                }
-            }
-            @Override
-            public LuaValue call(LuaValue modname, LuaValue env) {
-                LuaTable sps = new LuaTable(0,30);
-                sps.set("getenv", new _getenv());
-                sps.set("setenv", new _setenv());
-                sps.set("getvar", new _getvar());
-                sps.set("setvar", new _setvar());
-                env.set("sps", sps);
-                env.get("package").get("loaded").set("sps", sps);
-                return sps;
-            }
-        }
 
         String code;
 
@@ -124,6 +49,8 @@ public abstract class ScriptTask implements Task {
             uglobals.load(new JseMathLib());
             // inject our own library for accessing script context vars
             uglobals.load(new JLuaSPSauceLib());
+            // this is a modified version of the os lib that does not allow file access
+            uglobals.load(new JLuaOSLib());
             //prepare lua thread
             LuaValue chunk = sglobals.load(this.code, "main", uglobals);
             LuaThread thread = new LuaThread(uglobals, chunk);

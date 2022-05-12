@@ -105,9 +105,9 @@ public class UpdaterRelease extends ReleaseTask {
 
         //put all files with different hash / null hash into the patch block
         for (FileSet.Entry e : files.getCandidates()) {
+            if (!e.isValid() || !e.isSpFile()) continue;
             //get file type: plugin/source
             String group;
-            if (!e.isValid()) continue;
             switch (e.getType()) {
                 case ProjectMeta:
                     continue; // don't need readmes on the server

@@ -2,7 +2,7 @@ package com.dosmike.spsauce.script;
 
 import com.dosmike.spsauce.am.AMRelease;
 import com.dosmike.spsauce.github.HubRelease;
-import com.dosmike.spsauce.raw.ZIPRelease;
+import com.dosmike.spsauce.release.ZIPRelease;
 import com.dosmike.spsauce.release.FileSet;
 import com.dosmike.spsauce.release.UpdaterRelease;
 import com.dosmike.spsauce.tasks.ReleaseTask;

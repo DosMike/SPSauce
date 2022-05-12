@@ -52,8 +52,8 @@ public class AMRelease extends ReleaseTask {
             Element tr = element;
             while (tr.text().isEmpty()) tr = tr.parent();
             String filename = Objects.requireNonNull(tr.getElementsByTag("a").first()).text();
-            if (!filename.matches("\\.(sp|inc|smx|txt|cfg|so|dll)$")) {
-                //this file is not one we will reupload (maybe asset zips), so keep it
+            if (!filename.matches("\\.(sp|inc|smx|txt|cfg|so|dll|zip|xz|7z|gz|vdf)$")) {
+                //this file is not one we will re-upload, so keep it
                 offset+=1; continue;
             }
 
@@ -70,21 +70,38 @@ public class AMRelease extends ReleaseTask {
         Set<Path> pack = new HashSet<>();
         for (FileSet.Entry entry : files.getCandidates()) {
             int maxsize;
-            switch (entry.getType()) {
-                // i assume *1000 conversion to be conservative
-                case Extension:
-                    maxsize = 5720000; break;
-                case ModConfig:
-                case PluginConfig:
-                    maxsize = 29300; break;
-                case Plugin:
-                case GameData:
-                case PluginInclude:
-                case PluginSource:
-                case Translation:
-                    maxsize = 1000000; break;
-                default:
-                    maxsize=0;
+            if (entry.isSpFile()) {
+                switch (entry.getType()) {
+                    // i assume *1000 conversion to be conservative
+                    case Extension:
+                        maxsize = 5720000; break;
+                    case ModConfig:
+                    case PluginConfig:
+                        maxsize = 29300; break;
+                    case Plugin:
+                    case GameData:
+                    case PluginInclude:
+                    case PluginSource:
+                    case Translation:
+                        maxsize = 1000000; break;
+                    default:
+                        maxsize = 0;
+                }
+            } else {
+                //manually allow some archives to be attached to forum posts
+                switch (entry.getFileExt()) {
+                    case "zip":
+                    case "xz":
+                        maxsize = 20000000; break;
+                    case "7z":
+                        maxsize = 5000000; break;
+                    case "gz":
+                        maxsize = 4770000; break;
+                    case "vdf":
+                        maxsize = 1000000; break;
+                    default:
+                        maxsize = 0;
+                }
             }
             if (maxsize > 0 && Files.size(entry.getProjectPath()) <= maxsize) {
                 pack.add(entry.getProjectPath());

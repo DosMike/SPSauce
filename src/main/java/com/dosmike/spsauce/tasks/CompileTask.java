@@ -3,6 +3,7 @@ package com.dosmike.spsauce.tasks;
 import com.dosmike.spsauce.Executable;
 import com.dosmike.spsauce.Task;
 import com.dosmike.spsauce.script.BuildScript;
+import com.dosmike.spsauce.utils.BaseIO;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -50,6 +51,7 @@ public class CompileTask implements Task {
     public void run() throws Throwable {
         ArrayList<String> cmd = new ArrayList<>(args);
         cmd.addAll(userArgs.stream().map(BuildScript::injectRefs).collect(Collectors.toList()));
+        BaseIO.MakeExecutable(Paths.get(cmd.get(0)));
         ProcessBuilder pb = new ProcessBuilder(cmd);
         pb.directory(Executable.workdir.toFile());
         pb.inheritIO();
