@@ -66,7 +66,7 @@ Lines with that start with // or # are comments. Spaces are trimmed from each li
 | script `ARGS`<br>...<br>end script   | 'lua'                                                     | Execute a block of lua code to manipulate variables. These sandboxes are quite limited and do not get os/io access!                                                                                                                                                                                                                              |
 | with files<br>...<br>:release `ARGS` | 'github' \<owner²/repo²>[@branch²] \<tag²>                | Create a new Release on GitHub (or append if the release already exists) with the files listed in the lines between `with files` and `:release ...`                                                                                                                                                                                              |
 | with files<br>...<br>:release `ARGS` | ('am'&#124;'forum'&#124;'forums') \<threadid> \<version²> | Update the attachments on an AlliedMods forum thread with the files listed in the lines between `with files` and `:release ...`. Only unpacked files are remove (sp,inc,smx,so,dll,cfg,txt).                                                                                                                                                     |
-| with files<br>...<br>:release `ARGS` | 'zip' \<file²>                                            | Create a basic release archive with the specified path and name relative to the pwd using the files listed in the lines between `with files` and `:release ...`.                                                                                                                                                                                 |
+| with files<br>...<br>:release `ARGS` | 'zip' \<file²> ['auto']                                   | Create a basic release archive with the specified path and name relative to the pwd using the files listed in the lines between `with files` and `:release ...`. Specifying `auto` will try to restructure the included files into a directory tree fit for dropping into a mod directory.                                                       |
 | with files<br>...<br>:release `ARGS` | 'updater' \<updaterFile²> \<version²>                     | Patch the content of an updater file using the files listed in the lines between `with files` and `:release ...`. If a version change is detected it will create a patch block. Will create a separate file with a hash list to track file changes.                                                                                              |
 | pucpatch `ARGS`                      | \<file²> ':' \<convar²> \<version²>                       | Tries to patch the specified file as 'Plugin Update Checker'-CSV, updating the version value for the specified version convar. Supports limited vim modeline to automatically realign columns.                                                                                                                                                   | 
 
@@ -115,28 +115,40 @@ First, let's write the sp.sauce script to compile and pack the plugin:
 ```spsauce
 # specify the sourcemod version to use
 sourcemod 1.10
+
 # compile the plugin
 spcomp plugin.sp -oplugin.smx
+
 # get the plugin version (this is usually a define like this)
 set %{PLUGIN_VERSION} as \1 from plugin.sp ^#define\s+PLUGIN_VERSION\s+"([^"]+)"
-# authenticate agains github
-auth github ${GITTOKEN}
-# pack up the release archive
-with plugins plugin.smx
+
+# authenticate against github, the token is passed as argument
+auth github ${GITHUB_TOKEN}
+
 # packs files in a zip, folder names will be recursed automatically
 # intendation is optional but makes things more readable
 with files
+ plugin.smx
  translations
  gamedata
  scripting/include
-:release zip Plugin_%{PLUGIN_VERSION}.zip
+:release zip Plugin_%{PLUGIN_VERSION}.zip auto
+# the auto keyword in the line above tells the plugin to restructure
+# the archive, ready to be dropped into the servers mod folder.
+
 # patch meta files for `Updater` and `Plugin Update Checker`
 with files
+ plugin.smx
  translations
  gamedata
  plugins
 :release updater www/static/updater.cfg %{PLUGIN_VERSION}
 pucpatch www/static/versions.txt : version_convar %{PLUGIN_VERSION}
+
+# attach the zip file to the release that triggered this action
+with files
+ Plugin_%{PLUGIN_VERSION}.zip
+:release github ${GITHUB_REPOSITORY} ${GITHUB_REF_NAME}
 ```
 
 Now the GitHub Actions file:
@@ -155,5 +167,5 @@ jobs:
           distribution: 'adopt'
           java-version: '8'
       - name: SPSauce
-        run: ./sps
+        run: ./sps release.sauce --GITHUB_TOKEN ${{secrets.GITHUB_TOKEN}}
 ```

@@ -26,7 +26,7 @@
             <Keywords name="Folders in comment, close"></Keywords>
             <Keywords name="Keywords1">@windows @linux @mac</Keywords>
             <Keywords name="Keywords2">sourcemod auth dependency clone compilepool spcomp exec echo echo! die die! mkdir delete erase remove move copy set pucpatch</Keywords>
-            <Keywords name="Keywords3">am forum forums github limetech raw into : replace all any older skip none error fail as to from try updater zip lua</Keywords>
+            <Keywords name="Keywords3">am forum forums github limetech raw into : replace all any older skip none error fail as to from try updater zip lua auto</Keywords>
             <Keywords name="Keywords4">latest</Keywords>
             <Keywords name="Keywords5"></Keywords>
             <Keywords name="Keywords6"></Keywords>
