@@ -1,0 +1,13 @@
+
+# we have already compiled the plugin, so we just need to push the release
+
+auth github %{GITHUB_TOKEN}
+
+with files
+ myPlugin.sp
+ myPlugin.smx
+:release zip Release-%{VERSION}.zip
+
+with files
+ Release-%{VERSION}.zip
+:release github ${GITHUB_REPOSITORY} %{VERSION}

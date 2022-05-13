@@ -1,0 +1,57 @@
+# This tries to be a generic github workflow that can be applied to most projects.
+# You might still have to manually adjust some stuff, so treat it more like a template.
+# 
+# This workflow will patch updater files whenever there was a code change in the master 
+# branch. To not retrigger from any commits, we filter to plugin files.
+# Finally it will create a new release with the compiled plugin and source in a zip.
+# NOTE: In order to patch an Updater config, the compiled plugin is reqired!
+# NOTE: I expect you to develop on a development branch, and to merge/push to your main
+#       branch for realease only!
+on:
+  # with this, we want to trigger patching updater files whenever there was 
+  # a code change in the master branch. To give a bit more flexibility with the
+  # files filter, the steps will help us a bit.
+  push:
+    branches:
+      - master
+      - main
+    # important: only trigger as long as there's no change in /docs, because we
+    # are about to commit changes into that directory!
+    paths:
+      - "**.sp"
+      - "**.inc"
+      - "scripting/**"
+      - "gamedata/**"
+      - "translation/**"
+      - "sourcemod/**"
+  workflow_dispatch:
+  
+jobs:
+  update_docs:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.spsauce.outputs.version }}
+    # we need write permission to push commits and create releases
+    permissions:
+      contents: write
+    steps:
+      # for spsauce we need to setup java
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+      - id: spsauce
+        name: Compile Plugin & Patch Updater File
+        run: ./sps updater.sauce --GITHUB_TOKEN ${{ secrets.GITHUB_TOKEN }} --stacktrace
+      - name: Commit and Push
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: docs
+          default_author: github_actions
+          message: "Patch Updater files for version ${{ steps.spsauce.outputs.version }}"
+          push: "origin ${{ github.ref_name }}"
+      - name: Create Release
+        run: ./sps release.sauce --GITHUB_TOKEN ${{ secrets.GITHUB_TOKEN }} --VERSION ${{ steps.spsauce.outputs.version }} --stacktrace
