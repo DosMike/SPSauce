@@ -9,7 +9,7 @@ import java.util.regex.Pattern;
 
 public class ActionMove implements ScriptAction {
 
-    Path from, to;
+    String from, to;
     BuildScript context;
 
     BaseIO.ReplaceFlag replace;
@@ -39,12 +39,16 @@ public class ActionMove implements ScriptAction {
         } else replace = BaseIO.ReplaceFlag.Error;
 
         String[] tmp = location.split(":");
-        this.from = Paths.get(tmp[0].trim()).toAbsolutePath().normalize();
-        this.to = Paths.get(tmp[1].trim()).toAbsolutePath().normalize();
+        this.from = tmp[0].trim();
+        this.to = tmp[1].trim();
     }
 
     @Override
     public void run() throws Throwable {
-        context.taskList.and(()-> BaseIO.MoveFiles(from,to,!copy,replace) );
+        context.taskList.and(()->{
+            Path source = Paths.get(BuildScript.injectRefs(from)).toAbsolutePath().normalize();
+            Path dest = Paths.get(BuildScript.injectRefs(to)).toAbsolutePath().normalize();
+            BaseIO.MoveFiles(source,dest,!copy,replace);
+        });
     }
 }

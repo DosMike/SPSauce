@@ -16,7 +16,7 @@ public class ArgParser {
             this.description = description;
             this.isValueFlag = hasValue;
         }
-        public boolean IsValueFlag() {return isValueFlag;}
+        public boolean IsValueFlag() { return isValueFlag; }
 
         @Override
         public String toString() {

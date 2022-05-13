@@ -5,7 +5,6 @@ import com.dosmike.spsauce.tasks.CompileTask;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -23,9 +22,11 @@ public class TaskList {
         parallelCompiles = sz;
     }
 
-    public boolean step(ExecutorService service) throws ExecutionException, InterruptedException {
-        if (stepIndex >= taskList.size()) return false;
+    public boolean canStep() {
+        return stepIndex < taskList.size();
+    }
 
+    public void step(ExecutorService service) {
         if (taskList.get(stepIndex) instanceof CompileTask) {
             List<Task> compileTasks = new ArrayList<>();
             List<CompletableFuture<Void>> futures = new ArrayList<>();
@@ -40,10 +41,10 @@ public class TaskList {
             //join tasks
             for (CompletableFuture<Void> f : futures) f.join();
             limitedPool.shutdown();
-        } else
+        } else {
             taskList.get(stepIndex).submit(service).join();
-        stepIndex++;
-        return true;
+            stepIndex++;
+        }
     }
 
 }

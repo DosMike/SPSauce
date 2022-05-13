@@ -17,6 +17,6 @@ public class ActionMkdir implements ScriptAction {
 
     @Override
     public void run() throws Throwable {
-        context.taskList.and(()-> BaseIO.MakeDirectories(Executable.workdir, Paths.get(directory)) );
+        context.taskList.and(()-> BaseIO.MakeDirectories(Executable.workdir, Paths.get(BuildScript.injectRefs(directory))) );
     }
 }

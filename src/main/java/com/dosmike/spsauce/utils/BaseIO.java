@@ -1,6 +1,7 @@
 package com.dosmike.spsauce.utils;
 
 import com.dosmike.spsauce.Executable;
+import org.intellij.lang.annotations.Language;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -8,9 +9,12 @@ import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -22,7 +26,7 @@ public class BaseIO {
     public static HttpURLConnection PrepareConnection(String target) throws IOException {
         HttpURLConnection connection = (HttpURLConnection) (new URL(target).openConnection());
         connection.setRequestMethod("GET");
-        connection.setRequestProperty("User-Agent", "SPSauce/1.0 (by reBane aka DosMike)");
+        connection.setRequestProperty("User-Agent", Executable.UserAgent);
         connection.setInstanceFollowRedirects(true);
         connection.setDoInput(true);
         return connection;
@@ -98,10 +102,11 @@ public class BaseIO {
         connection.disconnect();
         return baos.toString();
     }
-    //enregion
+    //endregion
 
     //region FileSystem
-    public static boolean ValidateFile(Path file, String hashMethod, String hashString) throws IOException {
+
+    public static String GetFileHash(Path file, String hashMethod) throws IOException {
         MessageDigest md;
         try {
             md = MessageDigest.getInstance(hashMethod);
@@ -117,8 +122,18 @@ public class BaseIO {
             byte[] hashData = md.digest();
             StringBuilder sb = new StringBuilder();
             for (byte b : hashData) sb.append(String.format("%02X", b));
-            return hashString.equalsIgnoreCase(sb.toString());
+            return sb.toString();
         }
+    }
+    public static boolean ValidateFile(Path file, String hashMethod, String hashString) throws IOException {
+        return hashString.equalsIgnoreCase(GetFileHash(file, hashMethod));
+    }
+
+    public static String ReadFileContent(Path base, Path then) throws IOException {
+        base = base.toAbsolutePath().normalize();
+        Path target = base.resolve(then).toAbsolutePath().normalize();
+        if (!target.startsWith(base)) throw new IOException("Illegal target directory, is walking outside the base");
+        return String.join(System.lineSeparator(), Files.readAllLines(target));
     }
 
     public static void MakeDirectories(Path base, Path then) throws IOException {
@@ -240,6 +255,115 @@ public class BaseIO {
         Older,
         Skip,
         Error
+    }
+
+    /** always returns a mime type. tries the default content probe first.
+     * if that returns empty the file is peeked for 2048 bytes and checked for ascii chars.
+     * if ascii returns text/plain otherwise application/octet-stream */
+    public static String getMimeType(Path file) throws IOException {
+        String mime = Files.probeContentType(file);
+        if (mime == null) {
+            byte[] peekBuffer = new byte[2048];
+            try (InputStream in = Files.newInputStream(file, StandardOpenOption.READ)) {
+                int read = in.read(peekBuffer);
+                //use octet stream if any of the peeked bytes appear to be non-ascii
+                // since java bytes are signed and ascii never uses the high bit, non-ascii chars appear negative
+                for (int i = 0; i < read; i++) if (peekBuffer[i] <= 0) return "application/octet-stream";
+                return "text/plain";
+            }
+        } else return mime;
+    }
+
+    public static void MakeExecutable(Path path) throws SecurityException {
+        boolean isExecutable;
+        String absolutePath = path.toAbsolutePath().toString();
+        try {
+            SecurityManager securityManager = System.getSecurityManager();
+            if (securityManager!=null) securityManager.checkExec(absolutePath);
+            isExecutable = Files.isExecutable(path);
+        } catch (SecurityException e) {
+            isExecutable = false;
+        }
+
+        if (!isExecutable) {
+            //maybe we just downloaded sourcemod? try to set the executable flag if we know how to
+            if (Executable.OS == Executable.OperatingSystem.Linux) try {
+                Files.setPosixFilePermissions(path, PosixFilePermissions.fromString("rwxr-x---"));
+            } catch (IOException e) {
+                System.err.println("Could not set owner executable flag on spcomp - Compilation will fail!");
+            } else if (!path.toFile().setExecutable(true, false)) {
+                System.err.println("Could not set owner executable flag on spcomp - Compilation will fail!");
+            }
+        }
+
+        SecurityManager securityManager = System.getSecurityManager();
+        if (securityManager!=null) securityManager.checkExec(absolutePath);
+    }
+
+    //endregion
+
+    //region SourcePawn
+
+    /** categorize files interesting for plugins */
+    public enum SPFileType {
+        //default paths relative to mod root
+        PluginSource("\\.sp$", "addons/sourcemod/scripting"),
+        PluginInclude("\\.inc$", "addons/sourcemod/scripting/include"),
+        Plugin("\\.smx$", "addons/sourcemod/plugins"),
+        Translation("[\\\\/]?translations[\\\\/].*\\.txt$|\\.phrases\\.txt$", "addons/sourcemod/translations"),
+        GameData("[\\\\/]?gamedata[\\\\/].*\\.txt$|\\.games\\.txt$", "addons/sourcemod/gamedata"),
+        Extension("\\.ext(?:\\.\\w+)*\\.(?:dll|so)$", "addons/sourcemod/extensions"),
+        PluginConfig("[\\\\/]?configs[\\\\/]", "addons/sourcemod/configs"),
+        ModConfig("[\\\\/]?cfg[\\\\/]", "cfg"),
+        Maps("\\.bsp$|\\.nav$", "maps"),
+        Materials("\\.vtf$|\\.vmt$", "materials"),
+        Models("\\.mdl$|\\.phy$|\\.(?:dx[89]0|sw)\\.vtx$|\\.vvd$", "models"),
+        Sounds("\\.wav$|\\.mp3$", "sound"),
+        ProjectMeta("license|readme\\.|\\.md$", ""),
+        ;
+        private final Predicate<String> filePattern;
+        private final String defaultPath;
+        SPFileType(@Language("RegExp") String filePattern, String defaultPath) {
+            this.filePattern = Pattern.compile(filePattern, Pattern.CASE_INSENSITIVE).asPredicate();
+            this.defaultPath = defaultPath;
+        }
+
+        public boolean matches(String filename) { return filePattern.test(filename); }
+        public static Optional<SPFileType> from(String filename) {
+            String[] parts = filename.split("[\\\\/]");
+            if (parts.length == 0) return Optional.empty();
+            for (SPFileType type : values()) {
+                if (type.matches(parts[parts.length-1])) return Optional.of(type);
+            }
+            return Optional.empty();
+        }
+        public static Optional<SPFileType> from(Path path) {
+            return from (path.toAbsolutePath().toString());
+        }
+        public String getDefaultPath() {
+            return defaultPath;
+        }
+    }
+
+    /**
+     * Tries to fit the file to the directory path for non-overlapping root directories, but matching subdirectory tree
+     * This means, find the largest possible end for directory that is equal to the beginning of file
+     * @return the stitched path (file relative to directory) if possible, null otherwise
+     */
+    public static Path resolveAgainst(Path directory, Path file) {
+        // addons/sourcemod/plugins/ -> sourcemod/plugins/ -> plugins/
+        // plugins/myplugin.smx -> plugins/
+        //so: pop front for directory, pop end for file
+        int maxOverlap = Math.min(directory.getNameCount(), file.getNameCount()-1);
+        if (maxOverlap <= 0) return null; //file name has no directory for further information
+        for (int i=maxOverlap; i>0; i--) {
+            int subdirFrom = directory.getNameCount()-i;
+            Path subDir = directory.subpath(subdirFrom, directory.getNameCount());
+            if (file.startsWith(subDir)) {
+                return directory.subpath(0,subdirFrom).resolve(file);
+            }
+        }
+        return null;
     }
     //endregion
 

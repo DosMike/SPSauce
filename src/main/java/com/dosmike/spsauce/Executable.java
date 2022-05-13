@@ -17,6 +17,9 @@ import java.util.concurrent.Executors;
 
 public class Executable {
 
+    public static final String UserAgent = "SPSauce/1.0 (by reBane aka DosMike) "+
+            "Java/"+System.getProperty("java.version")+" ("+System.getProperty("java.vendor")+")";
+
     public enum OperatingSystem {
         Windows,
         Linux,
@@ -35,6 +38,7 @@ public class Executable {
     public static ArgParser.Flag fNoExec;
     public static ArgParser.Flag fInteractive;
     public static ArgParser.Flag fInteractiveBatch;
+    public static ArgParser.Flag fNoScripts;
 
     public static void main(String[] args) {
         try {
@@ -42,9 +46,10 @@ public class Executable {
             fStacktrace = ArgParser.RegisterFlag("Prints a stacktrace if errors occur during the execution of the built tool", "-stacktrace");
             fExtractAll = ArgParser.RegisterFlag("Unpacks the complete dependency archives. By default only .sp and .inc are extracted", "x","-fulldeps");
             fOffline = ArgParser.RegisterFlag("Offline mode does not try to resolve any dependencies for faster compile times.", "-offline");
-            fNoExec = ArgParser.RegisterFlag("Skip exec tasks. In case the build environment want's to be extra safe.", "s", "-no-exec");
+            fNoExec = ArgParser.RegisterFlag("Skip exec tasks. In case the build environment want's to be extra safe.", "e", "-no-exec");
             fInteractive = ArgParser.RegisterFlag("Start interactive single mode, reads instruction from StdIn and runs it.", "i");
             fInteractiveBatch = ArgParser.RegisterFlag("Start interactive batch mode, best for piping scripts through StdIn.", "I");
+            fNoScripts = ArgParser.RegisterFlag("Disable script executions for embedded scripts", "s", "-no-script");
             ArgParser.usageString = "<Args> [--] [BuildFile]";
             ArgParser.description = "SPSauce is a build tool that's primarily intended to fetch dependencies from SM sources including the forums";
             ArgParser.Parse(args);

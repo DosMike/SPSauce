@@ -1,6 +1,7 @@
 package com.dosmike.spsauce.script;
 
 import com.dosmike.spsauce.tasks.CompileTask;
+import com.dosmike.spsauce.utils.Strings;
 
 public class ActionSpcomp implements ScriptAction {
 
@@ -13,8 +14,7 @@ public class ActionSpcomp implements ScriptAction {
 
     @Override
     public void run() throws Throwable {
-        String[] args = ActionExec.translateCommandline(commandLine);
-        for (int i=0;i<args.length;i++) args[i]=BuildScript.injectRefs(args[i]);
+        String[] args = Strings.translateCommandline(commandLine);
         context.taskList.and(new CompileTask(args));
     }
 }

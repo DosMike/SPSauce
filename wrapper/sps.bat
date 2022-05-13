@@ -30,6 +30,10 @@ if "%spsfile%"=="" (
  exit /B 1
 )
 set spsfile=%~dp0spsauce\%spsfile%
+rem get current codepage to restore later and change to utf8 - this allows us to easily print fancy stuff
+for /f "tokens=*" %%a in ('chcp') do for %%b in (%%a) do set "_codepage=%%~nb"
+chcp 65001 >nul
 rem call the java application with the args
 call java -jar "%spsfile%" %*
 if %errorlevel% NEQ 0 pause
+chcp %_codepage% >nul

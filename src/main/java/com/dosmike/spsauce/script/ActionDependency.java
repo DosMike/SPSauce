@@ -28,7 +28,7 @@ public class ActionDependency implements ScriptAction {
         if (source.equals("am") || source.matches("^forums?$")) {
             ps = new AMSource();
         } else if (source.equals("github")) {
-            HubAuthorization auth = (HubAuthorization) context.authorizationMap.get("github");
+            HubAuthorization auth = (HubAuthorization) BuildScript.getAuthorization("github");
             ps = new HubSource(auth);
         } else if (source.equals("limetech")) {
             ps = new LimetechSource();
