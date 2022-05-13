@@ -13,3 +13,7 @@ dependency github DosMike/MotdMenu 21w26c MotdMenu.zip
 compilepool 1
 spcomp scripting/plugin.sp -iscripting -oplugin.smx
 set %{version} as \1 from scripting/plugin.sp ^#define\s+PLUGIN_VERSION\s+"([^"]+)"
+with files
+ scripting/plugin.sp
+ plugin.smx
+:release zip Release-%{version}.zip

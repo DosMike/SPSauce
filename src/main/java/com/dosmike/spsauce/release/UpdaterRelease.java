@@ -24,7 +24,8 @@ public class UpdaterRelease extends ReleaseTask {
 
     public UpdaterRelease(FileSet files, String[] args) {
         super(files);
-        assert args.length == 2;
+        if (args.length != 2)
+            throw new RuntimeException("Release action 'updater' expected 2 arguments, "+args.length+" passed: <updaterFile> <version>");
         this.updaterFile = args[0];
         this.version = args[1];
     }

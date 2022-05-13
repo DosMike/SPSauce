@@ -56,7 +56,15 @@ public class FileSet {
         public Path getInstallPath() {
             if (type == null)
                 throw new RuntimeException("This file type is not supported for packing");
-            Path installDir = BaseIO.resolveAgainst(Paths.get(type.getDefaultPath()), Paths.get(path));
+            Path local = Paths.get(path);
+            Path defaultPath = Paths.get(type.getDefaultPath());
+            Path installDir;
+            if (local.getNameCount()==1)
+                //local is only a filename in root, put it directly into the default directory
+                installDir = defaultPath.resolve(local);
+            else
+                //we have an actual path in the pwd, try matching it
+                installDir = BaseIO.resolveAgainst(Paths.get(type.getDefaultPath()), Paths.get(path));
             if (installDir == null)
                 throw new RuntimeException("Could not resolve install directory for \""+path+"\" against \""+type.getDefaultPath()+"\"");
             return installDir;

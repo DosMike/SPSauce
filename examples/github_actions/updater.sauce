@@ -1,0 +1,28 @@
+
+# in order to fully patch the updater file we need the compiled plugin,
+# so we will fist do that (we don't need to keep the compiled plugin).
+# if you do not want to compile with spsauce, just ignore/remove this part
+
+sourcemod 1.10
+
+# get plugin dependencies here
+//dependency platform ....
+
+# compile the plugin into the docs directory
+mkdir docs
+spcomp -O2 myPlugin.sp -omyPlugin.smx
+
+# get current version from the PLUGIN_VERSION define
+set %{VERSION} as \1 from myPlugin.sp #define\s+PLUGIN_VERSION\s+"([^"]+)"
+echo! ::set-output name=version::%{VERSION}
+
+# patch the updater file
+# if you've put your files in subdirectories, it is enough if you name those directories.
+# NOTE: there will also be a docs/.updater.cfg.hash file that we need to keep
+with files
+ myPlugin.sp
+ myPlugin.smx
+:release updater docs/updater.cfg %{VERSION}
+
+# pucpatch should happen on a per author/org basis as it's intended to hold
+# the versions for all your plugins, so we won't touch that here

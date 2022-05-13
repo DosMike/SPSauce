@@ -49,6 +49,8 @@ public class HubRelease extends ReleaseTask {
 
         try {
             HubAuthorization auth = (HubAuthorization) BuildScript.getAuthorization("github");
+            if (auth == null)
+                throw new RuntimeException("You need to auth GitHub before using GitHub releases");
             GHRepository repo = auth.hub.getRepository(owner + "/" + repository);
             //check if release tag exists
             GHRelease release = repo.getReleaseByTagName(tag);
