@@ -29,9 +29,18 @@ task moveArchive (type: Copy) {
 jar.finalizedBy moveArchive
 //shadowJar.finalizedBy moveArchive
 
+task makeMetaFile() {
+    //this is not in the manifest so we can use it in the debug env
+    outputs.dir sourceSets.main.resources.srcDirs.first()
+    doLast {
+        new File(sourceSets.main.resources.srcDirs.first(), ".spsmeta").text = "version="+project.version
+    }
+}
+classes.dependsOn(makeMetaFile)
+
 task makeRTdeps() {
     outputs.dir sourceSets.main.output.resourcesDir
-    doLast{
+    doLast {
         def allDeps= [] as Set
         configurations.findAll {it.canBeResolved}.each {
             allDeps += it.getResolvedConfiguration().getResolvedArtifacts().collect {art->
@@ -42,10 +51,10 @@ task makeRTdeps() {
         }
         println ("Collected the following dependencies for runtime collection:")
         allDeps.each {println "  $it"}
-        new File(sourceSets.main.output.resourcesDir, ".runtimedeps").text = allDeps.join("\n");
+        new File(sourceSets.main.output.resourcesDir, ".runtimedeps").text = allDeps.join("\n")
     }
 }
-jar.dependsOn(makeRTdeps);
+jar.dependsOn(makeRTdeps)
 
 dependencies {
     implementation 'org.jetbrains:annotations:22.0.0'

@@ -76,7 +76,7 @@ public class Launcher {
 
     static class LibraryClassLoader extends URLClassLoader {
         private LibraryClassLoader() {
-            super(new URL[]{Launcher.class.getProtectionDomain().getCodeSource().getLocation()}, null);
+            super(new URL[]{Launcher.class.getProtectionDomain().getCodeSource().getLocation()}, Launcher.class.getClassLoader());
         }
         void addPath(Path path) {
             try {

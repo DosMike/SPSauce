@@ -12,13 +12,13 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class Executable {
 
-    public static final String UserAgent = "SPSauce/1.0 (by reBane aka DosMike) "+
-            "Java/"+System.getProperty("java.version")+" ("+System.getProperty("java.vendor")+")";
+    public static final String UserAgent;
 
     public enum OperatingSystem {
         Windows,
@@ -39,6 +39,25 @@ public class Executable {
     public static ArgParser.Flag fInteractive;
     public static ArgParser.Flag fInteractiveBatch;
     public static ArgParser.Flag fNoScripts;
+
+    static {
+        UserAgent = SetupUserAgent();
+    }
+    private static String SetupUserAgent() {
+        String selfVersion;
+        try {
+            Properties props = new Properties();
+            props.load(Executable.class.getClassLoader().getResourceAsStream(".spsmeta"));
+            selfVersion = props.getProperty("version");
+            if (selfVersion == null || selfVersion.isEmpty()) throw new IllegalStateException();
+        } catch (Throwable e) {
+            //fallback
+            System.err.println("Metadata are corrupt!");
+            selfVersion = "1.0";
+        }
+        return "SPSauce/"+selfVersion+" (by reBane aka DosMike) "+
+                "Java/"+System.getProperty("java.version")+" ("+System.getProperty("java.vendor")+")";
+    }
 
     public static void main(String[] args) {
         try {
