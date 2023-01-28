@@ -36,9 +36,9 @@ public class UpdaterRelease extends ReleaseTask {
         version = BuildScript.injectRefs(version);
         System.out.println("└-> Patching updater file: "+updaterFile);
 
-        Path upf = Executable.workdir.resolve(updaterFile).toAbsolutePath().normalize();
+        Path upf = Executable.execdir.resolve(updaterFile).toAbsolutePath().normalize();
         Path uph = upf.getParent().resolve('.'+upf.getFileName().toString()+".hash");
-        if (!upf.startsWith(Executable.workdir))
+        if (!upf.startsWith(Executable.execdir))
             throw new IllegalArgumentException("Updater file is not in working directory");
         KVObject config = new KVObject();
         Map<String,String> fileHashes = new HashMap<>();

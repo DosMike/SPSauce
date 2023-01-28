@@ -69,8 +69,8 @@ public class HubSource implements PluginSource {
     public boolean fetch(Plugin dep) throws IOException {
 //        if (dep.packageurl == null) return false;
         Ref<String> filename = new Ref<>();
-        Path archive = Executable.workdir.resolve(Paths.get("spcache", "download", "."));
-        BaseIO.MakeDirectories(Executable.workdir, Paths.get("spcache", "download"));
+        Path archive = Executable.cachedir.resolve(Paths.get("download", "."));
+        BaseIO.MakeDirectories(Executable.cachedir, Paths.get("download"));
         if (dep.packageurl != null)
             BaseIO.DownloadURL(dep.packageurl, archive, null, filename);
         else if (dep.downloadRef instanceof GHRepository) {
@@ -85,7 +85,7 @@ public class HubSource implements PluginSource {
             throw new IOException("Download failed for "+dep.name);
         System.out.println("Downloaded "+filename.it +", extracting...");
         archive = archive.getParent().resolve(filename.it).normalize();
-        Path libs = Executable.workdir.resolve("spcache");
+        Path libs = Executable.cachedir;
         if (ArchiveIO.Unpack(archive, libs, ArchiveIO.SOURCEMOD_ARCHIVE_ROOT, ArchiveIO::FileExtractFilter)==0) {
             System.out.println("Archive has bad structure, guessing file paths!");
             if (ArchiveIO.UnpackUnordered(archive, libs, ArchiveIO::FileExtractFilter) == 0)

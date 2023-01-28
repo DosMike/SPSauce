@@ -36,7 +36,7 @@ public class ActionPUCPatch implements ScriptAction {
             Path pucfile = Paths.get(BuildScript.injectRefs(file)).toAbsolutePath().normalize();
             String myConvar = BuildScript.injectRefs(convar);
             String myVersion = BuildScript.injectRefs(version);
-            if (!pucfile.startsWith(Executable.workdir)) throw new IllegalArgumentException("PUC Index file is not within workdir");
+            if (!pucfile.startsWith(Executable.execdir)) throw new IllegalArgumentException("PUC Index file is not within workdir");
 
             //validate that this is a puc index
             List<PUCEntry> entries = new LinkedList<>();

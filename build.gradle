@@ -5,7 +5,7 @@ plugins {
 }
 
 group 'com.dosmike'
-version '1.4.2'
+version '1.5.0'
 
 repositories {
     mavenCentral()
@@ -18,7 +18,11 @@ mainClassName = 'com.dosmike.spsauce.Launcher'
 
 jar {
     manifest {
-        attributes('Main-Class': 'com.dosmike.spsauce.Launcher')
+        attributes(
+            'Main-Class': 'com.dosmike.spsauce.Executable',
+            // launcher agent's instrumentation instance is able to inject jars into the classloader
+            'Launcher-Agent-Class': 'com.dosmike.spsauce.Launcher'
+        )
     }
 }
 

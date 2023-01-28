@@ -19,13 +19,14 @@ import java.util.function.Function;
 
 public class PluginLock {
 
-    Path lockFile = Executable.workdir.resolve(Paths.get("spcache", "sps.lock"));
+    Path lockFile = Executable.cachedir.resolve(Paths.get("sps.lock"));
     List<Plugin> lockedPlugins = new LinkedList<>();
     boolean changed = false;
 
     public PluginLock() throws IOException {
         if (!Files.isRegularFile(lockFile)) {
-            BaseIO.MakeDirectories(Executable.workdir, Paths.get("spcache"));
+            //cache directory is allowed to be ensured fully
+            Files.createDirectories(Executable.cachedir);
             Path gitignore = lockFile.getParent().resolve(".gitignore");
             if (!Files.isRegularFile(gitignore)) {
                 Files.write(gitignore, "# This file was generated automatically\n# The purpose of this project is to not push dependencies in your repo, so let's not do that\n\n**".getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.WRITE);

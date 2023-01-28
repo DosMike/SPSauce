@@ -57,14 +57,14 @@ public class SourceModTask implements Task {
             }
         }
         if (target == null) throw new IOException("Could not locate SourceMod");
-        Path archive = Paths.get("spcache", "download", fname);
-        BaseIO.MakeDirectories(Executable.workdir, archive.getParent());
-        archive = Executable.workdir.resolve(archive);
+        Path archive = Paths.get("download", fname);
+        BaseIO.MakeDirectories(Executable.cachedir, archive.getParent());
+        archive = Executable.cachedir.resolve(archive);
         if (!Files.exists(archive)) {
             AMSource.waitNextRequest();
             BaseIO.DownloadURL(target, archive, null, null);
         }
-        if (ArchiveIO.Unpack(archive, Executable.workdir.resolve("spcache"), ArchiveIO.SOURCEMOD_ARCHIVE_ROOT, null)==0)
+        if (ArchiveIO.Unpack(archive, Executable.cachedir, ArchiveIO.SOURCEMOD_ARCHIVE_ROOT, null)==0)
             throw new IOException("Unpacking SourceMod failed!");
         else {
             Files.deleteIfExists(archive);
@@ -76,7 +76,7 @@ public class SourceModTask implements Task {
     }
 
     private boolean ready() {
-        Path baseDir = Executable.workdir.resolve(Paths.get("spcache","sourcemod","scripting"));
+        Path baseDir = Executable.cachedir.resolve(Paths.get("sourcemod","scripting"));
         if (Executable.OS == Executable.OperatingSystem.Windows)
             return Files.isRegularFile(baseDir.resolve("spcomp.exe"));
         else if (Executable.OS == Executable.OperatingSystem.Linux || Executable.OS == Executable.OperatingSystem.Mac)

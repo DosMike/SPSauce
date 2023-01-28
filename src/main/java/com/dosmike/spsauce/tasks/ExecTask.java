@@ -17,8 +17,9 @@ public class ExecTask implements Task {
 
     @Override
     public void run() throws Throwable {
-        ProcessBuilder pb = new ProcessBuilder(args.stream().map(BuildScript::injectRefs).collect(Collectors.toList()));
-        pb.directory(Executable.workdir.toFile());
+        List<String> command = args.stream().map(BuildScript::injectRefs).collect(Collectors.toList());
+        ProcessBuilder pb = new ProcessBuilder(command);
+        pb.directory(Executable.execdir.toFile());
         BuildScript.applyEnvironment(pb);
         pb.inheritIO();
         Process process = pb.start();

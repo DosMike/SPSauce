@@ -68,6 +68,8 @@ public class BaseIO {
                 }).filter(Objects::nonNull).findFirst().orElseThrow(()->new IllegalArgumentException("Could not get filename"));
     }
 
+    /** If the passed in path ends with a . element it will use the suggested filename from remote instead.
+     * In any case the used filename is passed back out, and the files hash value is returned. */
     public static String DownloadURL(String url, Path target, String hashMethod, Ref<String> filename) throws IOException {
         HttpURLConnection connection = PrepareConnection(url);
         CheckHTTPCode(connection);
@@ -129,18 +131,34 @@ public class BaseIO {
         return hashString.equalsIgnoreCase(GetFileHash(file, hashMethod));
     }
 
+    public static boolean StartsWithLegalPath(Path file) {
+        Path absolute = file.toAbsolutePath().normalize();
+        return absolute.startsWith(Executable.execdir) || absolute.startsWith(Executable.cachedir);
+    }
+
+    public static Path MakePathAbsoluteIfLegal(String path) {
+        return MakePathAbsoluteIfLegal(Paths.get(path));
+    }
+    public static Path MakePathAbsoluteIfLegal(Path path) {
+        if (!path.isAbsolute()) {
+            path = Executable.execdir.resolve(path).normalize();
+        }
+        if (StartsWithLegalPath(path)) return path;
+        else throw new IllegalArgumentException("Illegal target file or directory");
+    }
+
     public static String ReadFileContent(Path base, Path then) throws IOException {
         base = base.toAbsolutePath().normalize();
         Path target = base.resolve(then).toAbsolutePath().normalize();
-        if (!target.startsWith(base)) throw new IOException("Illegal target directory, is walking outside the base");
+        if (!target.startsWith(base)) throw new IOException("Illegal target directory \""+target+"\", is walking outside the base \""+base+"\"");
         return String.join(System.lineSeparator(), Files.readAllLines(target));
     }
 
     public static void MakeDirectories(Path base, Path then) throws IOException {
         base = base.toAbsolutePath().normalize();
         Path target = base.resolve(then).toAbsolutePath().normalize();
-        if (!target.startsWith(base)) throw new IOException("Illegal target directory, is walking outside the base");
-        if (!Files.isDirectory(then)) Files.createDirectories(target);
+        if (!target.startsWith(base)) throw new IOException("Illegal target directory \""+target+"\", is walking outside the base\""+base+"\"");
+        if (!Files.isDirectory(target)) Files.createDirectories(target);
         File dir = target.toFile(); //windows will fuck up created directories otherwise, using File because Files will only do POSIX
         if (!dir.canExecute() && !dir.setExecutable(true,false)) throw new IOException("Failed to set directory executable");
         if (!dir.canRead() && !dir.setReadable(true,false)) throw new IOException("Failed to set directory readable");
@@ -149,7 +167,7 @@ public class BaseIO {
     }
 
     public static void RemoveRecursive(Path path) throws IOException {
-        if (!path.toAbsolutePath().normalize().startsWith(Executable.workdir)) throw new IOException("Illegal target directory, can not delete directories outside work dir");
+        if (!StartsWithLegalPath(path.toAbsolutePath().normalize())) throw new IOException("Illegal target directory, can not delete directories outside work/cache dir");
         if (Files.isDirectory(path)) {
             Collection<Path> children = Files.list(path).collect(Collectors.toList());
             for (Path child : children) RemoveRecursive(child);
@@ -171,9 +189,17 @@ public class BaseIO {
         System.out.println("Target: "+to);
         from = from.toAbsolutePath().normalize();
         to = to.toAbsolutePath().normalize();
-        if (!from.startsWith(Executable.workdir)) throw new IOException("Illegal source directory, can not move directories outside work dir");
-        if (!to.startsWith(Executable.workdir)) throw new IOException("Illegal target directory, can not move directories outside work dir");
+        if (!StartsWithLegalPath(from)) throw new IOException("Illegal source directory, can not move directories outside work/cache dir");
+        if (!StartsWithLegalPath(to)) throw new IOException("Illegal target directory, can not move directories outside work/cache dir");
         if (to.startsWith(from)) throw new IOException("Target cannot be a sub directory of source");
+        if (!Files.exists(from)) {
+            if (replace == ReplaceFlag.Error) {
+                throw new NoSuchFileException(from.toString());
+            } else {
+                System.out.println("Unable to "+(move?"move":"copy")+" files: No such file or directory: "+from);
+                return;
+            }
+        }
         if (move) try { //shortcut for renaming
             Files.move(from, to);
             return; //was able to move file / rename directory
@@ -299,6 +325,11 @@ public class BaseIO {
         SecurityManager securityManager = System.getSecurityManager();
         if (securityManager!=null) securityManager.checkExec(absolutePath);
     }
+
+//    boolean IsLegalPath(Path path) {
+//        Path abs = path.toAbsolutePath().normalize();
+//        return abs.startsWith(Executable.cachedir) || abs.startsWith(Executable.scriptdir);
+//    }
 
     //endregion
 

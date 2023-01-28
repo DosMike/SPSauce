@@ -129,20 +129,20 @@ public class AMSource implements PluginSource {
     public boolean fetch(Plugin dep) throws IOException {
         if (dep.packageurl != null) {
             Ref<String> filename = new Ref<>();
-            Path archive = Executable.workdir.resolve(Paths.get("spcache", "download", "."));
-            BaseIO.MakeDirectories(Executable.workdir, Paths.get("spcache", "download"));
+            Path archive = Executable.cachedir.resolve(Paths.get("download", "."));
+            BaseIO.MakeDirectories(Executable.cachedir, Paths.get("download"));
             BaseIO.DownloadURL(dep.packageurl, archive, null, filename);
             if (!Files.exists(archive))
                 throw new IOException("Download failed for "+dep.name);
             System.out.println("Downloaded "+filename.it +", extracting...");
             archive = archive.getParent().resolve(filename.it).normalize();
-            Path libs = Executable.workdir.resolve("spcache");
+            Path libs = Executable.cachedir;
             if (ArchiveIO.Unpack(archive, libs, ArchiveIO.SOURCEMOD_ARCHIVE_ROOT, ArchiveIO::FileExtractFilter) == 0)
                 throw new IOException("Failed to extract " + filename.it);
             Files.deleteIfExists(archive);
             return true;
         } else {
-            Path libs = Executable.workdir.resolve("spcache");
+            Path libs = Executable.cachedir;
             Ref<String> filename = new Ref<>();
             int downloaded = 0;
             for (int i=0;i<dep.amattachments.size();i++) {

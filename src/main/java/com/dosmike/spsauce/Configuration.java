@@ -1,6 +1,10 @@
 package com.dosmike.spsauce;
 
+import com.dosmike.spsauce.utils.Maybe;
+import org.apache.commons.exec.environment.EnvironmentUtils;
+
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
@@ -16,19 +20,40 @@ public class Configuration {
 
     public Configuration() {
         Map<String,String> ini = load(this);
-        cacheDirectory = getPathOrDefault(ini, "directories.plugincache", ".spcache");
+
+        cacheDirectory = getPathFromEnv("SPSCACHE")
+                .flatOr(()->getPathFromConfig(ini, "directories.plugincache"))
+                .or(()->Paths.get("spcache"))
+                .unit();
+
     }
 
     public Path cacheDirectory;
 
 //region Parsing
 
-    private static Path getPathOrDefault(Map<String,String> map, String key, String defaultPath) {
-        try {
-            return Paths.get(map.getOrDefault("directories.plugincache", ".spcache"));
-        } catch (InvalidPathException exception) {
-            return Paths.get(defaultPath);
+    private static Maybe<Path> getPathFromEnv(String envName) {
+        String envPath = System.getenv(envName);
+        if (envPath != null) {
+            Path config = Paths.get(envPath);
+            if (Files.isDirectory(config)) return Maybe.of(config);
+            else System.err.println("Environment path in \""+envName+"\" points to invalid directory, falling back");
         }
+        return Maybe.empty();
+    }
+
+    private static Maybe<Path> getPathFromConfig(Map<String,String> map, String key) {
+        try {
+            String path = map.get(key);
+            if (path != null) {
+                Path directory = Paths.get(path);
+                if (!Files.isDirectory(directory)) throw new FileNotFoundException();
+                return Maybe.of(directory);
+            }
+        } catch (InvalidPathException|FileNotFoundException ignore) {
+            System.err.println("Config value in \""+key+"\" points to invalid directory, falling back");
+        }
+        return Maybe.empty();
     }
 
     private static Path getConfigPath() {

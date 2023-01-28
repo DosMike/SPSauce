@@ -78,13 +78,13 @@ public class Executable {
             ArgParser.description = "SPSauce is a build tool that's primarily intended to fetch dependencies from SM sources including the forums";
             ArgParser.Parse(args);
 
+            execdir = Paths.get(".").toAbsolutePath().normalize();
             if (ArgParser.GetStringArgs().isEmpty()) {
-                selfScript = Paths.get(".", "sp.sauce").toAbsolutePath().normalize();
+                selfScript = execdir.resolve( "sp.sauce");
             } else {
                 selfScript = Paths.get(ArgParser.GetStringArgs().get(0)).toAbsolutePath().normalize();
             }
             scriptdir = selfScript.getParent();
-            execdir = Paths.get(".").toAbsolutePath().normalize();
             if (ArgParser.IsFlagSet(fCacheDir)) {
                 try {
                     cachedir = Paths.get(ArgParser.GetFlagValue(fCacheDir));

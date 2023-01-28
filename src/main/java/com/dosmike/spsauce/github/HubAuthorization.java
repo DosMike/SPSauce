@@ -13,14 +13,19 @@ public class HubAuthorization implements Authorization {
 
     final GitHub hub;
 
+    // The Regexes here are not for validation of security, only to decide the token type,
+    // so we can pass any type properly to the API.
+
     //https://de.wikipedia.org/wiki/JSON_Web_Token
-    private static final Pattern TOKEN_JWT = Pattern.compile("^[a-zA-Z0-9%_-]+\\.[a-zA-Z0-9%_-]+\\.[a-zA-Z0-9%_-]+$");
+    private static final Pattern TOKEN_JWT = Pattern.compile("^[\\w%-]+\\.[\\w%-]+\\.[\\w%-]+$");
 
     //https://github.blog/changelog/2021-03-31-authentication-token-format-updates-are-generally-available/
+    //https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/about-authentication-to-github
+    //https://gist.github.com/magnetikonline/073afe7909ffdd6f10ef06a00bc3bc88
     //personal and oauth use .withOAuth
-    private static final Pattern TOKEN_OAUTH = Pattern.compile("^gh[po]_[A-Za-z0-9_]+$");
-    private static final Pattern TOKEN_APPTYPE = Pattern.compile("^gh[usr]_[A-Za-z0-9_]+$");
-    private static final Pattern TOKEN_LEGACY = Pattern.compile("^[a-f0-9]+$");
+    private static final Pattern TOKEN_OAUTH = Pattern.compile("^(gh[po]|github_pat)_\\w+$");
+    private static final Pattern TOKEN_APPTYPE = Pattern.compile("^gh[usr]_\\w+|v[0-9]+\\.\\w+$");
+    private static final Pattern TOKEN_LEGACY = Pattern.compile("^\\w+$");
 
     public HubAuthorization(String token, String login) throws IOException {
         GitHubBuilder ghb = new GitHubBuilder();

@@ -65,12 +65,12 @@ public class HubRelease extends ReleaseTask {
             //attach files
             for (FileSet.Entry e : files.getCandidates()) {
                 if (e.isValid()) {
-                    Path path = Executable.workdir.resolve(e.getProjectPath()).toAbsolutePath().normalize();
-                    if (!path.startsWith(Executable.workdir)) {
-                        System.err.println("Unable to attach file outside of working directory to GitHub Release: "+path);
-                        continue;
+                    try {
+                        Path path = BaseIO.MakePathAbsoluteIfLegal(e.getProjectPath());
+                        release.uploadAsset(path.toFile(), BaseIO.getMimeType(path));
+                    } catch (IllegalArgumentException exception) {
+                        System.err.println("Unable to attach file outside of working directory to GitHub Release: "+e.getProjectFile());
                     }
-                    release.uploadAsset(path.toFile(), BaseIO.getMimeType(path));
                 }
             }
         } catch (IOException e) {

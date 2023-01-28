@@ -25,32 +25,32 @@ public class CloneTask implements Task {
     @Override
     public void run() throws Throwable {
         //late process of ref injections
-        Path target = Paths.get(BuildScript.injectRefs(path)).toAbsolutePath().normalize();
-        if (!target.startsWith(Executable.workdir))
+        Path target;
+        try {
+            target = BaseIO.MakePathAbsoluteIfLegal(BuildScript.injectRefs(path));
+        } catch (IllegalArgumentException exc) {
             throw new RuntimeException("You can only clone into subdirectories!");
-        target = Executable.workdir.relativize(target);
+        }
         String checkout = BuildScript.injectRefs(branch);
 
 
         System.out.println("Invoking GIT for "+target);
-        Path clonebase = Executable.workdir.resolve("spcache");
-        Path cloneTarget = clonebase.resolve(target);
-        if (!Files.isDirectory(cloneTarget)) {
-            BaseIO.MakeDirectories(clonebase, target);
+        if (!Files.isDirectory(target)) {
+            BaseIO.MakeDirectories(target, Paths.get("."));
         } else {
             System.out.println("  Target directory exists, assuming cloned");
             return;
         }
-        call(cloneTarget, "git", "init");
-        call(cloneTarget, "git", "remote", "add", "origin", gituri);
-        call(cloneTarget, "git", "fetch", "origin");
+        call(target, "git", "init");
+        call(target, "git", "remote", "add", "origin", gituri);
+        call(target, "git", "fetch", "origin");
         if (checkout == null) {
             // this is a little hack that'll fetch the main branch's head detached
-            call(cloneTarget, "git", "remote", "set-head", "origin", "--auto");
-            call(cloneTarget, "git", "checkout", "origin");
+            call(target, "git", "remote", "set-head", "origin", "--auto");
+            call(target, "git", "checkout", "origin");
         } else
-            call(cloneTarget, "git", "checkout", checkout);
-        call(cloneTarget, "git", "submodule", "update", "--init", "--recursive");
+            call(target, "git", "checkout", checkout);
+        call(target, "git", "submodule", "update", "--init", "--recursive");
         //remove git meta
 //        InOut.RemoveRecursive(cloneTarget.resolve(".git"));
     }

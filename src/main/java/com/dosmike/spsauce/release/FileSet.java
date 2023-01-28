@@ -11,7 +11,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -30,20 +29,21 @@ public class FileSet {
         public Entry(Path file) throws IOException {
             file = file.toAbsolutePath().normalize();
             if (Files.isSymbolicLink(file)) throw new IllegalArgumentException("Symbolic links are not supported for packing");
-            this.path = Executable.workdir.relativize(file).toString();
+            if (!BaseIO.StartsWithLegalPath(file)) throw new IllegalArgumentException("Files outside the work directory are not supported for packing");
+            this.path = Executable.execdir.relativize(file).toString();
             this.type = BaseIO.SPFileType.from(this.path).orElse(null);
         }
 
         public String getProjectFile() {
             if (resolved) return path;
             path = BuildScript.injectRefs(path);
-            exists = Files.exists(Executable.workdir.resolve(path));
+            exists = Files.exists(Executable.execdir.resolve(path));
             return path;
         }
         public Path getProjectPath() {
-            if (resolved) return Executable.workdir.resolve(path);
+            if (resolved) return Executable.execdir.resolve(path);
             path = BuildScript.injectRefs(path);
-            Path full = Executable.workdir.resolve(path);
+            Path full = Executable.execdir.resolve(path);
             exists = Files.exists(full);
             return full;
         }
