@@ -55,7 +55,7 @@ public class LimetechSource implements PluginSource {
         if (!Files.exists(archive))
             throw new IOException("Download failed for "+dep.name);
         System.out.println("Downloaded "+filename+", extracting...");
-        Path libs = Executable.cachedir;
+        Path libs = Executable.cachedir.resolve("addons");
         if (ArchiveIO.Unpack(archive, libs, ArchiveIO.SOURCEMOD_ARCHIVE_ROOT, ArchiveIO::FileExtractFilter)==0)
             throw new IOException("Failed to extract "+filename);
         Files.deleteIfExists(archive);

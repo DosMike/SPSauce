@@ -85,8 +85,9 @@ public class HubSource implements PluginSource {
             throw new IOException("Download failed for "+dep.name);
         System.out.println("Downloaded "+filename.it +", extracting...");
         archive = archive.getParent().resolve(filename.it).normalize();
-        Path libs = Executable.cachedir;
-        if (ArchiveIO.Unpack(archive, libs, ArchiveIO.SOURCEMOD_ARCHIVE_ROOT, ArchiveIO::FileExtractFilter)==0) {
+        Path libs = Executable.cachedir.resolve("addons");
+        if (ArchiveIO.Unpack(archive, libs, ArchiveIO.SOURCEMOD_ARCHIVE_ROOT, ArchiveIO::FileExtractFilter) == 0 &&
+            ArchiveIO.Unpack(archive, libs.resolve("sourcemod"), ArchiveIO.SOURCEMOD_PLUGIN_PATH, ArchiveIO::FileExtractFilter) == 0) {
             System.out.println("Archive has bad structure, guessing file paths!");
             if (ArchiveIO.UnpackUnordered(archive, libs, ArchiveIO::FileExtractFilter) == 0)
                 throw new IOException("Failed to extract " + filename.it);

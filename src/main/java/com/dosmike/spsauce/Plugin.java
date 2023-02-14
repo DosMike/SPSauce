@@ -27,4 +27,8 @@ public class Plugin {
         out.write(data.getBytes(StandardCharsets.UTF_8));
     }
 
+    @Override
+    public String toString() {
+        return "\""+name+"\"<"+game+"@"+version+">("+homepage+")";
+    }
 }

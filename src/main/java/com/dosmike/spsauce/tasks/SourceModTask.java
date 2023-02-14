@@ -64,7 +64,7 @@ public class SourceModTask implements Task {
             AMSource.waitNextRequest();
             BaseIO.DownloadURL(target, archive, null, null);
         }
-        if (ArchiveIO.Unpack(archive, Executable.cachedir, ArchiveIO.SOURCEMOD_ARCHIVE_ROOT, null)==0)
+        if (ArchiveIO.Unpack(archive, Executable.cachedir.resolve("addons"), ArchiveIO.SOURCEMOD_ARCHIVE_ROOT, null)==0)
             throw new IOException("Unpacking SourceMod failed!");
         else {
             Files.deleteIfExists(archive);

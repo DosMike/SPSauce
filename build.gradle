@@ -5,7 +5,7 @@ plugins {
 }
 
 group 'com.dosmike'
-version '1.5.0'
+version '1.5.1'
 
 repositories {
     mavenCentral()
@@ -19,7 +19,7 @@ mainClassName = 'com.dosmike.spsauce.Launcher'
 jar {
     manifest {
         attributes(
-            'Main-Class': 'com.dosmike.spsauce.Executable',
+            'Main-Class': 'com.dosmike.spsauce.Launcher',
             // launcher agent's instrumentation instance is able to inject jars into the classloader
             'Launcher-Agent-Class': 'com.dosmike.spsauce.Launcher'
         )
@@ -63,19 +63,19 @@ jar.dependsOn(makeRTdeps)
 dependencies {
     implementation 'org.jetbrains:annotations:23.0.0'
 
-    compileOnly 'org.jsoup:jsoup:1.15.3' //MIT
+    implementation 'org.jsoup:jsoup:1.15.3' //MIT
 
-    compileOnly 'org.apache.commons:commons-exec:1.3' //apache2
-    compileOnly 'org.apache.commons:commons-compress:1.21' //apache2
+    implementation 'org.apache.commons:commons-exec:1.3' //apache2
+    implementation 'org.apache.commons:commons-compress:1.21' //apache2
 
     //compress algorithm support
-    compileOnly 'org.brotli:dec:0.1.2' //MIT
-    compileOnly 'org.tukaani:xz:1.9' //Public Domain
+    implementation 'org.brotli:dec:0.1.2' //MIT
+    implementation 'org.tukaani:xz:1.9' //Public Domain
 
-    compileOnly 'org.kohsuke:github-api:1.313' //MIT
+    implementation 'org.kohsuke:github-api:1.313' //MIT
 
     //script engines because of course
-    compileOnly 'org.luaj:luaj-jse:3.0.1' //MIT
+    implementation 'org.luaj:luaj-jse:3.0.1' //MIT
 }
 
 test {

@@ -1,11 +1,6 @@
 package com.dosmike.spsauce;
 
-import org.jetbrains.annotations.NotNull;
-
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.lang.instrument.Instrumentation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -15,6 +10,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.jar.JarFile;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -54,7 +52,7 @@ public class Launcher {
                 binaryDir = binaryDir.getParent();
             } else {
                 //we are not packed! binaryDir is classpath
-                binaryDir = Paths.get(".").toAbsolutePath(); //use work dir for debugging
+                binaryDir = Paths.get(".").toAbsolutePath().normalize(); //use work dir for debugging
             }
             binaryDir = binaryDir.resolve("libs");
             Files.createDirectories(binaryDir);
@@ -100,7 +98,6 @@ public class Launcher {
     }
 
     private static Path binaryDir;
-    private static Instrumentation instrument;
 
     private static Path LoadMavenDep(String group, String name, String version) throws IOException {
         if (!group.matches("^[\\w.-]+$")) throw new IllegalArgumentException("Invalid group");
@@ -139,8 +136,36 @@ public class Launcher {
 //        System.out.println("Loaded library "+group+":"+name+" from "+localLib.getFileName().toString());
     }
 
+    static class UnlockedClassLoader extends URLClassLoader {
+        private static URL[] validate(Collection<Path> deps) {
+            URL[] urls = new URL[deps.size()];
+            try {
+                int i=0;
+                for (Path file : deps) {
+                    //probe the file / make sure it's a jar
+                    JarFile jar = new JarFile(file.toFile());
+                    if (jar.getManifest() == null)
+                        throw new IOException("Dependency does not declare manifest, might be corrupted!");
+                    urls[i++] = file.toFile().toURI().toURL();
+                }
+            } catch (IOException x) { throw new IllegalArgumentException("Invalid dependencies", x); }
+            return urls;
+        }
 
-    private static void LoadBakedDeps() {
+        public UnlockedClassLoader(Collection<Path> deps, ClassLoader parent) {
+            super(validate(deps), parent);
+        }
+
+        void addJar(Path file) throws IOException {
+            //probe the file / make sure it's a jar
+            JarFile jar = new JarFile(file.toFile());
+            if (jar.getManifest()==null) throw new IOException("Dependency does not declare manifest, might be corrupted!");
+            addURL(file.toFile().toURI().toURL());
+        }
+
+    }
+
+    private static void LoadBakedDeps(Instrumentation instrument, Collection<Path> libraryList) {
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             CopyStreamAndClose(Launcher.class.getClassLoader().getResourceAsStream(".runtimedeps"), baos);
@@ -149,7 +174,8 @@ public class Launcher {
                 if (dep.isEmpty()) continue;
                 String[] artifact = dep.split(":");
                 Path jar = LoadMavenDep(artifact[0], artifact[1], artifact[2]).toAbsolutePath();
-                instrument.appendToSystemClassLoaderSearch(new JarFile(jar.toFile()));
+                if (instrument != null) instrument.appendToSystemClassLoaderSearch(new JarFile(jar.toFile()));
+                else libraryList.add(jar);
             }
         } catch (Throwable e) {
             throw new RuntimeException("Failed to load dependencies!", e);
@@ -157,13 +183,40 @@ public class Launcher {
     }
 
     public static void agentmain(final String ignore, final Instrumentation instrumentation) {
-        instrument = instrumentation;
-        LoadBakedDeps();
+        if (System.getProperty("java.version").startsWith("1.")) return; //we are running Java <= 8
+        LoadBakedDeps(instrumentation, null);
+    }
+    public static ClassLoader loadDependencies() {
+        if (!System.getProperty("java.version").startsWith("1.")) return Launcher.class.getClassLoader(); //we are running Java > 8
+        Set<Path> dependencyList = new HashSet<>();
+        LoadBakedDeps(null, dependencyList);
+        return new UnlockedClassLoader(dependencyList, Launcher.class.getClassLoader());
     }
 
     public static Path getBinaryDir() {
         return binaryDir.getParent().normalize();
     }
 
+    /**
+     * This entry point prevents loading the actual entry point until our ClassLoader is sorted.
+     * For Java 9+ this should be done beforehand by the LauncherAgent class, before that
+     * we seemed to have sailed pretty well with creating a custom URLClassLoader and going
+     * from there. It would be really nice if Java just allowed to optionally specify a
+     * dependency directory to load additional class paths from, but here we are...
+     */
+    public static void main(String[] args) {
+        try {
+            //reflectively call our actual entry-point based on the suggested classloader
+            // from our dependency injector. If you want to debug this project from the IDE
+            // you're better off using the URLClassLoader (Java8) as it probably won't load
+            // the LauncherAgent.
+            ClassLoader targetClassLoader = Launcher.loadDependencies();
+            Class<?> mainClass = targetClassLoader.loadClass("com.dosmike.spsauce.Executable");
+            Method mainMethod = mainClass.getDeclaredMethod("main", String[].class);
+            mainMethod.invoke(null, (Object) args);
+        } catch (ClassNotFoundException | NoSuchMethodException | InvocationTargetException | IllegalAccessException t) {
+            throw new RuntimeException(t);
+        }
+    }
 
 }

@@ -61,7 +61,7 @@ public class DirectSource implements PluginSource {
                 throw new IOException("Download failed for "+dep.name);
             System.out.println("Downloaded "+filename.it +", extracting...");
             archive = archive.getParent().resolve(filename.it).normalize();
-            Path libs = Executable.cachedir;
+            Path libs = Executable.cachedir.resolve("addons");
            if (ArchiveIO.Unpack(archive, libs, ArchiveIO.SOURCEMOD_ARCHIVE_ROOT, ArchiveIO::FileExtractFilter) == 0)
                 throw new IOException("Cannot patch non-existing file, please ensure patches are applied after dependencies");
             Files.deleteIfExists(archive);

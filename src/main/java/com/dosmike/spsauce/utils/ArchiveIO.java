@@ -18,26 +18,41 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 public class ArchiveIO {
 
     //region zipUtils
-    public static Predicate<Path> SOURCEMOD_ARCHIVE_ROOT = path-> path.endsWith(Paths.get("addons"));
+    public static Function<Path, Optional<Path>> SOURCEMOD_ARCHIVE_ROOT = path->Optional.of(path).filter(p->p.endsWith("addons"));
 
-    public static Path findArchiveRoot(Iterable<? extends ArchiveEntry> archive, Predicate<Path> isRoot) throws IOException {
+    public static Function<Path, Optional<Path>> SOURCEMOD_PLUGIN_PATH = path->{
+        if (path.endsWith("sourcemod"))
+            return Optional.of(path);
+        else if (path.endsWith("scripting") ||
+                path.endsWith("translations") ||
+                path.endsWith("gamedata") ||
+                path.endsWith("plugins") )
+            return Optional.ofNullable(path.getParent());
+        else
+            return Optional.empty();
+    };
+
+    public static Path findArchiveRoot(Iterable<? extends ArchiveEntry> archive, Function<Path, Optional<Path>> mapRoot) throws IOException {
         Path shortest = null;
         for (ArchiveEntry entry : archive) {
             Path path = entryNameToPath(entry.getName());
             if (entry.isDirectory()) {
-                if (isRoot.test(path) && (shortest == null || shortest.getNameCount() > path.getNameCount()))
+                path = mapRoot.apply(path).orElse(null);
+                if (path != null && (shortest == null || shortest.getNameCount() > path.getNameCount()))
                     shortest = path;
             } else {
                 while (path.getNameCount() > 1) {
                     path = path.getParent();
-                    if (isRoot.test(path)) {
-                        if (shortest == null || shortest.getNameCount() > path.getNameCount())
-                            shortest = path;
+                    Path testPath = mapRoot.apply(path).orElse(null);
+                    if (testPath != null) {
+                        if (shortest == null || shortest.getNameCount() > testPath.getNameCount())
+                            shortest = testPath;
                         break;
                     }
                 }
@@ -91,8 +106,9 @@ public class ArchiveIO {
     public interface ArchiveOpener { ArchiveInputStream open(Path path) throws IOException; }
     public static boolean FileExtractFilter(Path p) {
         String fname = p.getFileName().toString();
-        if (fname.isEmpty() || fname.startsWith(".") || !fname.contains(".") || fname.endsWith(".")) return false; //whack files we don't care about
-        return  (ArgParser.IsFlagSet(Executable.fExtractAll) || fname.endsWith(".sp") || fname.endsWith(".inc"));
+        if (!fname.contains(".") || fname.endsWith(".")) return false; //whack files we don't care about
+        if (fname.endsWith(".sp") || fname.endsWith(".inc")) return true; //allow no name for these (download will use remote name)
+        return ArgParser.IsFlagSet(Executable.fExtractAll) && !fname.startsWith("."); //extract misc file if not hidden (like .gitignore)
     }
     //endregion
 
@@ -112,7 +128,7 @@ public class ArchiveIO {
 
         return Files.newOutputStream(extractTo, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
     }
-    public static int Unpack(Path archive, Path target, Predicate<Path> rootFinder, @Nullable Predicate<Path> fileFilter) throws IOException {
+    public static int Unpack(Path archive, Path target, Function<Path, Optional<Path>> rootFinder, @Nullable Predicate<Path> fileFilter) throws IOException {
         archive = archive.toAbsolutePath().normalize();
         target = target.toAbsolutePath().normalize();
         String fileName = archive.getFileName().toString().toLowerCase();
@@ -131,7 +147,7 @@ public class ArchiveIO {
             throw new IOException("Unsupported archive type");
     }
     /** @returns amount of files unpacked, 0 is probably an error */
-    private static int unpackSevenZip(Path archive, Path target, Predicate<Path> rootFinder, @Nullable Predicate<Path> fileFilter) throws IOException {
+    private static int unpackSevenZip(Path archive, Path target, Function<Path, Optional<Path>> rootFinder, @Nullable Predicate<Path> fileFilter) throws IOException {
         SevenZFile file = new SevenZFile(archive.toFile());
         SevenZArchiveEntry entry;
         Path entryPath, rootPath = findArchiveRoot(file.getEntries(), rootFinder);
@@ -142,7 +158,7 @@ public class ArchiveIO {
             if (entryPath.startsWith(rootPath) && !entry.isDirectory() && entry.hasStream()) {
                 if (fileFilter != null && !fileFilter.test(entryPath)) continue; //whack files we don't care about
                 // unpack to root path parent as we unpack into that directory name, not just the contents of it
-                try (OutputStream outstream = unpackGetOutputStream(entryPath, rootPath.getParent(), target)) {
+                try (OutputStream outstream = unpackGetOutputStream(entryPath, rootPath, target)) {
                     ChunckReadable.copyStream(ChunckReadable.chunks(file, entry.getSize()), outstream);
                     outstream.flush();
                 }
@@ -151,7 +167,7 @@ public class ArchiveIO {
         }
         return extracted;
     }
-    private static int unpackArchive(Path file, Path target, Predicate<Path> rootFinder, @Nullable Predicate<Path> fileFilter, ArchiveOpener opener) throws IOException {
+    private static int unpackArchive(Path file, Path target, Function<Path, Optional<Path>> rootFinder, @Nullable Predicate<Path> fileFilter, ArchiveOpener opener) throws IOException {
         Path rootPath, entryPath;
         int extracted = 0;
         try (ArchiveInputStream zis = opener.open(file)) {
@@ -165,7 +181,7 @@ public class ArchiveIO {
                 entryPath = entryNameToPath(entry.getName());
                 if (entryPath.startsWith(rootPath) && !entry.isDirectory()) {
                     if (fileFilter != null && !fileFilter.test(entryPath)) continue; //whack files we don't care about
-                    try (OutputStream outstream = unpackGetOutputStream(entryPath, rootPath.getParent(), target)) {
+                    try (OutputStream outstream = unpackGetOutputStream(entryPath, rootPath, target)) {
                         ChunckReadable.copyStream(ChunckReadable.chunks(zis), outstream);
                         outstream.flush();
                     }
