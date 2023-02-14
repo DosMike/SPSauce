@@ -5,7 +5,7 @@ plugins {
 }
 
 group 'com.dosmike'
-version '1.5.1'
+version '1.5.0'
 
 repositories {
     mavenCentral()
