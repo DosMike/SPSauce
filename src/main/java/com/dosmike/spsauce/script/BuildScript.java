@@ -36,6 +36,7 @@ public class BuildScript {
 
     public BuildScript(InputStream inputStream) throws IOException {
         lock = new PluginLock();
+        setupEnvironment();
         try (BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
             Ref<String> line=new Ref<>(), word=new Ref<>();
             int parseMode=0; //1 read fileset, 2 read lua
@@ -164,6 +165,16 @@ public class BuildScript {
 
     //a little wrapper to allow setting env values
     private static final Map<String, String> environment = new HashMap<>();
+
+    /**
+     * Inject values into the custom environment map for certain values to be available in case
+     * they have not or could not be set in another way.
+     */
+    private static void setupEnvironment() {
+        if (System.getenv("SPSCACHE") == null && !environment.containsKey("SPSCACHE")) {
+            environment.put("SPSCACHE", Executable.cachedir.toString());
+        }
+    }
     public static String getEnvValue(String key) {
         return environment.containsKey(key) ? environment.get(key) : System.getenv(key);
     }
@@ -201,7 +212,7 @@ public class BuildScript {
         StringBuffer r = new StringBuffer();
         while (m.find()) {
             if (m.group(2).equalsIgnoreCase("cwd")||m.group(2).equalsIgnoreCase("cd")) {
-                m.appendReplacement(r, escapeValueReplacement(Executable.workdir.toString()));
+                m.appendReplacement(r, escapeValueReplacement(Executable.execdir.toString()));
             } else if (m.group(1).equals("$")) {
                 String value = getEnvValue(m.group(2));
                 if (value==null) throw new RuntimeException("The specified environment variable was not set");

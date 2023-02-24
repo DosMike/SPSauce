@@ -49,13 +49,13 @@ public class LimetechSource implements PluginSource {
     public boolean fetch(Plugin dep) throws IOException {
         if (dep.packageurl == null) return false;
         String filename = dep.packageurl.substring(dep.packageurl.lastIndexOf('/')+1);
-        Path archive = Executable.workdir.resolve(Paths.get("spcache", "download", filename)).normalize();
-        BaseIO.MakeDirectories(Executable.workdir, Paths.get("spcache", "download"));
+        Path archive = Executable.cachedir.resolve(Paths.get("download", filename)).normalize();
+        BaseIO.MakeDirectories(Executable.cachedir, Paths.get("download"));
         BaseIO.DownloadURL(dep.packageurl, archive, null, null);
         if (!Files.exists(archive))
             throw new IOException("Download failed for "+dep.name);
         System.out.println("Downloaded "+filename+", extracting...");
-        Path libs = Executable.workdir.resolve("spcache");
+        Path libs = Executable.cachedir.resolve("addons");
         if (ArchiveIO.Unpack(archive, libs, ArchiveIO.SOURCEMOD_ARCHIVE_ROOT, ArchiveIO::FileExtractFilter)==0)
             throw new IOException("Failed to extract "+filename);
         Files.deleteIfExists(archive);

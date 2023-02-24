@@ -5,7 +5,7 @@ plugins {
 }
 
 group 'com.dosmike'
-version '1.4.1'
+version '1.5.0'
 
 repositories {
     mavenCentral()
@@ -18,7 +18,11 @@ mainClassName = 'com.dosmike.spsauce.Launcher'
 
 jar {
     manifest {
-        attributes('Main-Class': 'com.dosmike.spsauce.Launcher')
+        attributes(
+            'Main-Class': 'com.dosmike.spsauce.Launcher',
+            // launcher agent's instrumentation instance is able to inject jars into the classloader
+            'Launcher-Agent-Class': 'com.dosmike.spsauce.Launcher'
+        )
     }
 }
 
@@ -29,9 +33,18 @@ task moveArchive (type: Copy) {
 jar.finalizedBy moveArchive
 //shadowJar.finalizedBy moveArchive
 
+task makeMetaFile() {
+    //this is not in the manifest so we can use it in the debug env
+    outputs.dir sourceSets.main.resources.srcDirs.first()
+    doLast {
+        new File(sourceSets.main.resources.srcDirs.first(), ".spsmeta").text = "version="+project.version
+    }
+}
+classes.dependsOn(makeMetaFile)
+
 task makeRTdeps() {
     outputs.dir sourceSets.main.output.resourcesDir
-    doLast{
+    doLast {
         def allDeps= [] as Set
         configurations.findAll {it.canBeResolved}.each {
             allDeps += it.getResolvedConfiguration().getResolvedArtifacts().collect {art->
@@ -42,27 +55,27 @@ task makeRTdeps() {
         }
         println ("Collected the following dependencies for runtime collection:")
         allDeps.each {println "  $it"}
-        new File(sourceSets.main.output.resourcesDir, ".runtimedeps").text = allDeps.join("\n");
+        new File(sourceSets.main.output.resourcesDir, ".runtimedeps").text = allDeps.join("\n")
     }
 }
-jar.dependsOn(makeRTdeps);
+jar.dependsOn(makeRTdeps)
 
 dependencies {
-    implementation 'org.jetbrains:annotations:22.0.0'
+    implementation 'org.jetbrains:annotations:23.0.0'
 
-    compileOnly 'org.jsoup:jsoup:1.14.3' //MIT
+    implementation 'org.jsoup:jsoup:1.15.3' //MIT
 
-    compileOnly 'org.apache.commons:commons-exec:1.3' //apache2
-    compileOnly 'org.apache.commons:commons-compress:1.21' //apache2
+    implementation 'org.apache.commons:commons-exec:1.3' //apache2
+    implementation 'org.apache.commons:commons-compress:1.21' //apache2
 
     //compress algorithm support
-    compileOnly 'org.brotli:dec:0.1.2' //MIT
-    compileOnly 'org.tukaani:xz:1.9' //Public Domain
+    implementation 'org.brotli:dec:0.1.2' //MIT
+    implementation 'org.tukaani:xz:1.9' //Public Domain
 
-    compileOnly 'org.kohsuke:github-api:1.301' //MIT
+    implementation 'org.kohsuke:github-api:1.313' //MIT
 
     //script engines because of course
-    compileOnly 'org.luaj:luaj-jse:3.0.1' //MIT
+    implementation 'org.luaj:luaj-jse:3.0.1' //MIT
 }
 
 test {

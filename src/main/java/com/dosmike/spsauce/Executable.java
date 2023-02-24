@@ -10,15 +10,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class Executable {
 
-    public static final String UserAgent = "SPSauce/1.0 (by reBane aka DosMike) "+
-            "Java/"+System.getProperty("java.version")+" ("+System.getProperty("java.vendor")+")";
+    public static final String UserAgent;
 
     public enum OperatingSystem {
         Windows,
@@ -27,7 +28,7 @@ public class Executable {
         Unsupported,
     }
 
-    public static Path workdir;
+    public static Path scriptdir,cachedir,execdir;
     public static OperatingSystem OS = OperatingSystem.Unsupported;
     public static ExecutorService exec = Executors.newCachedThreadPool();
     public static boolean ARCH64;
@@ -39,9 +40,31 @@ public class Executable {
     public static ArgParser.Flag fInteractive;
     public static ArgParser.Flag fInteractiveBatch;
     public static ArgParser.Flag fNoScripts;
+    private static ArgParser.Flag fCacheDir;
+
+    static {
+        UserAgent = SetupUserAgent();
+    }
+    private static String SetupUserAgent() {
+        String selfVersion;
+        try {
+            Properties props = new Properties();
+            props.load(Executable.class.getClassLoader().getResourceAsStream(".spsmeta"));
+            selfVersion = props.getProperty("version");
+            if (selfVersion == null || selfVersion.isEmpty()) throw new IllegalStateException();
+        } catch (Throwable e) {
+            //fallback
+            System.err.println("Metadata are corrupt!");
+            selfVersion = "1.0";
+        }
+        return "SPSauce/"+selfVersion+" (by reBane aka DosMike) "+
+                "Java/"+System.getProperty("java.version")+" ("+System.getProperty("java.vendor")+")";
+    }
 
     public static void main(String[] args) {
         try {
+            DetectOS();
+            Configuration configuration = new Configuration();
 
             fStacktrace = ArgParser.RegisterFlag("Prints a stacktrace if errors occur during the execution of the built tool", "-stacktrace");
             fExtractAll = ArgParser.RegisterFlag("Unpacks the complete dependency archives. By default only .sp and .inc are extracted", "x","-fulldeps");
@@ -50,16 +73,27 @@ public class Executable {
             fInteractive = ArgParser.RegisterFlag("Start interactive single mode, reads instruction from StdIn and runs it.", "i");
             fInteractiveBatch = ArgParser.RegisterFlag("Start interactive batch mode, best for piping scripts through StdIn.", "I");
             fNoScripts = ArgParser.RegisterFlag("Disable script executions for embedded scripts", "s", "-no-script");
+            fCacheDir = ArgParser.RegisterValueFlag("Where to put the .spcache directory. Relative directories are relative to pwd/cd.", "-cachedir");
             ArgParser.usageString = "<Args> [--] [BuildFile]";
             ArgParser.description = "SPSauce is a build tool that's primarily intended to fetch dependencies from SM sources including the forums";
             ArgParser.Parse(args);
+
+            execdir = Paths.get(".").toAbsolutePath().normalize();
             if (ArgParser.GetStringArgs().isEmpty()) {
-                selfScript = Paths.get(".", "sp.sauce").toAbsolutePath().normalize();
+                selfScript = execdir.resolve( "sp.sauce");
             } else {
                 selfScript = Paths.get(ArgParser.GetStringArgs().get(0)).toAbsolutePath().normalize();
             }
-            workdir = selfScript.getParent();
-            DetectOS();
+            scriptdir = selfScript.getParent();
+            if (ArgParser.IsFlagSet(fCacheDir)) {
+                try {
+                    cachedir = Paths.get(ArgParser.GetFlagValue(fCacheDir));
+                } catch (InvalidPathException ignore) { }
+            } else if (configuration.cacheDirectory.isAbsolute()) {
+                cachedir = configuration.cacheDirectory.normalize();
+            } else {
+                cachedir = execdir.resolve(configuration.cacheDirectory).normalize();
+            }
 
             if (ArgParser.IsFlagSet(fInteractive) || ArgParser.IsFlagSet(fInteractiveBatch)) {
                 interactiveHandler();

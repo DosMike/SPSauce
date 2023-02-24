@@ -27,10 +27,10 @@ public class ZIPRelease extends ReleaseTask {
     @Override
     public void run() {
         archiveName = BuildScript.injectRefs(archiveName);
-        Path destination = Executable.workdir.resolve(archiveName).toAbsolutePath().normalize();
+        Path destination = Executable.execdir.resolve(archiveName).toAbsolutePath().normalize();
         System.out.println("└-> Zipping to archive: "+archiveName);
 
-        if (!destination.startsWith(Executable.workdir))
+        if (!destination.startsWith(Executable.execdir))
             throw new IllegalArgumentException("Unable to create release archive outside of working directory: "+destination);
         try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(destination, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE))) {
             zos.setLevel(9);
@@ -38,14 +38,14 @@ public class ZIPRelease extends ReleaseTask {
                 if (!e.isValid()) continue;
 
                 System.out.println(" + Zipping "+e.getProjectFile());
-                Path file = Executable.workdir.resolve(e.getProjectPath()).toAbsolutePath().normalize();
-                if (!file.startsWith(Executable.workdir))
+                Path file = Executable.execdir.resolve(e.getProjectPath()).toAbsolutePath().normalize();
+                if (!file.startsWith(Executable.execdir))
                     throw new IllegalArgumentException("Unable to archive file outside of working directory: " + destination);
                 if (file.equals(destination))
                     throw new IllegalArgumentException("Unable to archive the archive, nice try!");
                 String zipPath = (fixPaths && e.isSpFile())
                         ? e.getInstallPath().toString()
-                        : Executable.workdir.relativize(file).toString();
+                        : Executable.execdir.relativize(file).toString();
                 zos.putNextEntry(new ZipEntry(zipPath));
                 Files.copy(file, zos);
                 zos.closeEntry();

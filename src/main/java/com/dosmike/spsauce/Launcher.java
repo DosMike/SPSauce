@@ -1,22 +1,19 @@
 package com.dosmike.spsauce;
 
-import com.dosmike.spsauce.utils.BaseIO;
-import com.dosmike.spsauce.utils.ChunckReadable;
-import com.dosmike.spsauce.utils.Ref;
-
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.*;
+import java.lang.instrument.Instrumentation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.net.MalformedURLException;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.net.URLClassLoader;
+import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.jar.JarFile;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -37,35 +34,35 @@ import java.util.regex.Pattern;
  *
  * download links from maven.org seem to be
  * https://repo1.maven.org/maven2/&lt;group/reverse>/&lt;name>/&lt;version>/&lt;name>-&lt;version>.jar
+ *
+ * This class will not load any custom packages until all dependencies are downloaded and mounted.
  */
 public class Launcher {
 
     static {
         init(); //bypass static init code size limit
     }
-    static void init() {
+    private static void init() {
         URL mysaucecode = Launcher.class.getProtectionDomain().getCodeSource().getLocation();
         if (!mysaucecode.getProtocol().equals("file")) throw new RuntimeException("SPSauce does not support running from non-file sources");
         try {
             binaryDir = Paths.get(mysaucecode.toURI()).toAbsolutePath();
             if (binaryDir.getFileName().toString().endsWith(".jar")) {
                 //we are packed, libs are not within the jar tho
-                selfArchive = binaryDir.getFileName().toString();
                 binaryDir = binaryDir.getParent();
             } else {
                 //we are not packed! binaryDir is classpath
-                selfArchive = "";
-                binaryDir = Paths.get(".").toAbsolutePath(); //use work dir for debugging
+                binaryDir = Paths.get(".").toAbsolutePath().normalize(); //use work dir for debugging
             }
-            BaseIO.MakeDirectories(binaryDir, Paths.get("libs"));
             binaryDir = binaryDir.resolve("libs");
+            Files.createDirectories(binaryDir);
             Path tmp = binaryDir.resolve(".gitignore");
             if (!Files.exists(tmp) || !Files.isRegularFile(tmp)) {
                 Files.write(tmp, "# This file was generated automatically\n# Please only publish libraries with your repo if you know what you're doing\n\n**".getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
             }
             tmp = binaryDir.resolve("LICENSE");
             if (!Files.exists(tmp) || !Files.isRegularFile(tmp)) {
-                ChunckReadable.copyStream(ChunckReadable.chunks(Launcher.class.getClassLoader().getResourceAsStream("LICENSE")), Files.newOutputStream(tmp, StandardOpenOption.WRITE, StandardOpenOption.CREATE));
+                CopyStreamAndClose(Launcher.class.getClassLoader().getResourceAsStream("LICENSE"), Files.newOutputStream(tmp, StandardOpenOption.WRITE, StandardOpenOption.CREATE));
             }
         } catch (URISyntaxException e) {
             throw new RuntimeException("Could not determine local directory for SPSauce");
@@ -74,26 +71,35 @@ public class Launcher {
         }
     }
 
-    static class LibraryClassLoader extends URLClassLoader {
-        private LibraryClassLoader() {
-            super(new URL[]{Launcher.class.getProtectionDomain().getCodeSource().getLocation()}, null);
+    private static void CopyStreamAndClose(InputStream in, OutputStream out) throws IOException {
+        byte[] buffer = new byte[4096];
+        int read;
+        while ((read=in.read(buffer))>=0) out.write(buffer,0,read);
+        out.flush(); in.close(); out.close();
+    }
+    private static String ReadStreamAndClose(InputStream in) throws IOException {
+        ByteArrayOutputStream buf = new ByteArrayOutputStream();
+        CopyStreamAndClose(in, buf);
+        return buf.toString();
+    }
+    private static InputStream OpenURL(String url) throws IOException {
+        HttpURLConnection connection = (HttpURLConnection) (new URL(url).openConnection());
+        connection.setRequestMethod("GET");
+        connection.setRequestProperty("User-Agent", "SPSauce Library Bootstrapper/1.0 (github.com/dosmike/spsauce)");
+        connection.setInstanceFollowRedirects(true);
+        connection.setDoInput(true);
+        if (connection.getResponseCode() < 200 || connection.getResponseCode() >= 400) {
+            try (InputStream in = connection.getErrorStream()) {
+                System.err.println(ReadStreamAndClose(in));
+            } catch (IOException e) {/**/}
+            throw new IOException("Connection refused: " + connection.getResponseCode() + " " + connection.getResponseMessage());
         }
-        void addPath(Path path) {
-            try {
-                path = path.toAbsolutePath();
-                if (!path.startsWith(binaryDir)) throw new RuntimeException("Library would not locate into the local library directory");
-                addURL(path.toUri().toURL());
-            } catch (MalformedURLException e) {
-                throw new IllegalArgumentException("Could not validate library path!");
-            }
-        }
+        return connection.getInputStream();
     }
 
     private static Path binaryDir;
-    private static String selfArchive;
-    private static final LibraryClassLoader loader = new LibraryClassLoader();
 
-    public static void LoadMavenDep(String group, String name, String version) throws IOException {
+    private static Path LoadMavenDep(String group, String name, String version) throws IOException {
         if (!group.matches("^[\\w.-]+$")) throw new IllegalArgumentException("Invalid group");
         if (!name.matches("^[\\w-]+$")) throw new IllegalArgumentException("Invalid artifact");
         if (!version.matches("^[\\w.-]+$")) throw new IllegalArgumentException("Invalid version");
@@ -102,7 +108,7 @@ public class Launcher {
             String url = "https://repo1.maven.org/maven2/"+group.replace('.','/')+"/"+name+"/maven-metadata.xml";
             System.out.println("Fetching dependency information for "+group+":"+name+":"+version+" ...");
             System.out.println("< "+url);
-            String meta = BaseIO.DownloadURLtoMemory(url);
+            String meta = ReadStreamAndClose(OpenURL(url));
             if (version.equalsIgnoreCase("latest")) {
                 Pattern latest = Pattern.compile("<latest>([\\w.-]+)</latest>");
                 Matcher m = latest.matcher(meta);
@@ -114,55 +120,103 @@ public class Launcher {
                     throw new IOException("Could not locate specified artifact "+group+":"+name+":"+version);
                 }
             }
-            System.out.println("Located Library "+group+":"+name+":"+version);
-            Ref<String> artifactname = new Ref<>();
+            System.out.println(" Located Library "+group+":"+name+":"+version);
             String baseName = name+"-"+version;
-            String hash;
             String baseUrl = "https://repo1.maven.org/maven2/"+group.replace('.','/')+"/"+name+"/"+version+"/"+baseName;
 
             url = baseUrl+".jar";
-            System.out.println("< "+url);
-            BaseIO.DownloadURL(url,binaryDir.resolve(baseName+".jar"),null,artifactname);
-            if (!artifactname.it.equals(localLib.getFileName().toString()))
-                BaseIO.MoveFiles(binaryDir.resolve(artifactname.it), localLib, true, BaseIO.ReplaceFlag.Older);
+            System.out.println(" < "+url);
+            CopyStreamAndClose(OpenURL(url),Files.newOutputStream(binaryDir.resolve(baseName+".jar")));
 
             url = baseUrl+"-sources.jar";
-            System.out.println("< "+url);
-            BaseIO.DownloadURL(url,binaryDir.resolve(baseName+"-sources.jar"),null,null);
+            System.out.println(" < "+url);
+            CopyStreamAndClose(OpenURL(url),Files.newOutputStream(binaryDir.resolve(baseName+"-sources.jar")));
         }
-        loader.addPath(binaryDir.resolve(localLib));
+        return localLib;
 //        System.out.println("Loaded library "+group+":"+name+" from "+localLib.getFileName().toString());
     }
 
-    public static void LoadBakedDeps() {
+    static class UnlockedClassLoader extends URLClassLoader {
+        private static URL[] validate(Collection<Path> deps) {
+            URL[] urls = new URL[deps.size()];
+            try {
+                int i=0;
+                for (Path file : deps) {
+                    //probe the file / make sure it's a jar
+                    JarFile jar = new JarFile(file.toFile());
+                    if (jar.getManifest() == null)
+                        throw new IOException("Dependency does not declare manifest, might be corrupted!");
+                    urls[i++] = file.toFile().toURI().toURL();
+                }
+            } catch (IOException x) { throw new IllegalArgumentException("Invalid dependencies", x); }
+            return urls;
+        }
+
+        public UnlockedClassLoader(Collection<Path> deps, ClassLoader parent) {
+            super(validate(deps), parent);
+        }
+
+        void addJar(Path file) throws IOException {
+            //probe the file / make sure it's a jar
+            JarFile jar = new JarFile(file.toFile());
+            if (jar.getManifest()==null) throw new IOException("Dependency does not declare manifest, might be corrupted!");
+            addURL(file.toFile().toURI().toURL());
+        }
+
+    }
+
+    private static void LoadBakedDeps(Instrumentation instrument, Collection<Path> libraryList) {
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ChunckReadable.copyStream(ChunckReadable.chunks(Launcher.class.getClassLoader().getResourceAsStream(".runtimedeps")), baos);
+            CopyStreamAndClose(Launcher.class.getClassLoader().getResourceAsStream(".runtimedeps"), baos);
             String[] deps = baos.toString().split("\n");
             for (String dep : deps) {
                 if (dep.isEmpty()) continue;
                 String[] artifact = dep.split(":");
-                LoadMavenDep(artifact[0], artifact[1], artifact[2]);
+                Path jar = LoadMavenDep(artifact[0], artifact[1], artifact[2]).toAbsolutePath();
+                if (instrument != null) instrument.appendToSystemClassLoaderSearch(new JarFile(jar.toFile()));
+                else libraryList.add(jar);
             }
         } catch (Throwable e) {
             throw new RuntimeException("Failed to load dependencies!", e);
         }
     }
 
-    public static void Run(String mainClass, String[] args) {
-        try {
-            Class<?> executable = loader.loadClass(mainClass);
-            Method main = executable.getDeclaredMethod("main", String[].class);
-            main.invoke(null, (Object) args);
-        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InvocationTargetException t) {
-            System.err.println("Failed to launch MainClass from injected Loader!");
-            t.printStackTrace();
-        }
+    public static void agentmain(final String ignore, final Instrumentation instrumentation) {
+        if (System.getProperty("java.version").startsWith("1.")) return; //we are running Java <= 8
+        LoadBakedDeps(instrumentation, null);
+    }
+    public static ClassLoader loadDependencies() {
+        if (!System.getProperty("java.version").startsWith("1.")) return Launcher.class.getClassLoader(); //we are running Java > 8
+        Set<Path> dependencyList = new HashSet<>();
+        LoadBakedDeps(null, dependencyList);
+        return new UnlockedClassLoader(dependencyList, Launcher.class.getClassLoader());
     }
 
+    public static Path getBinaryDir() {
+        return binaryDir.getParent().normalize();
+    }
+
+    /**
+     * This entry point prevents loading the actual entry point until our ClassLoader is sorted.
+     * For Java 9+ this should be done beforehand by the LauncherAgent class, before that
+     * we seemed to have sailed pretty well with creating a custom URLClassLoader and going
+     * from there. It would be really nice if Java just allowed to optionally specify a
+     * dependency directory to load additional class paths from, but here we are...
+     */
     public static void main(String[] args) {
-        Launcher.LoadBakedDeps();
-        Launcher.Run("com.dosmike.spsauce.Executable", args);
+        try {
+            //reflectively call our actual entry-point based on the suggested classloader
+            // from our dependency injector. If you want to debug this project from the IDE
+            // you're better off using the URLClassLoader (Java8) as it probably won't load
+            // the LauncherAgent.
+            ClassLoader targetClassLoader = Launcher.loadDependencies();
+            Class<?> mainClass = targetClassLoader.loadClass("com.dosmike.spsauce.Executable");
+            Method mainMethod = mainClass.getDeclaredMethod("main", String[].class);
+            mainMethod.invoke(null, (Object) args);
+        } catch (ClassNotFoundException | NoSuchMethodException | InvocationTargetException | IllegalAccessException t) {
+            throw new RuntimeException(t);
+        }
     }
 
 }

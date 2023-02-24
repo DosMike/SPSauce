@@ -20,7 +20,7 @@ public class FetchTask implements Task {
     }
 
     public void run() throws IOException{
-        if (!at.fetch(dep)) throw new IOException("Could not fetch dependency %s"+dep);
+        if (!at.fetch(dep)) throw new IOException("Could not fetch dependency "+dep);
         lock.Lock(dep);
     }
 

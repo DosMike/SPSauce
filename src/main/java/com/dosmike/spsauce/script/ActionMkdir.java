@@ -3,6 +3,7 @@ package com.dosmike.spsauce.script;
 import com.dosmike.spsauce.Executable;
 import com.dosmike.spsauce.utils.BaseIO;
 
+import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class ActionMkdir implements ScriptAction {
@@ -17,6 +18,14 @@ public class ActionMkdir implements ScriptAction {
 
     @Override
     public void run() throws Throwable {
-        context.taskList.and(()-> BaseIO.MakeDirectories(Executable.workdir, Paths.get(BuildScript.injectRefs(directory))) );
+        context.taskList.and(()-> {
+            Path fullPath = BaseIO.MakePathAbsoluteIfLegal(BuildScript.injectRefs(directory));
+            if (fullPath.startsWith(Executable.execdir))
+                BaseIO.MakeDirectories(Executable.execdir, Executable.execdir.relativize(fullPath));
+            else if (fullPath.startsWith(Executable.cachedir))
+                BaseIO.MakeDirectories(Executable.cachedir, Executable.cachedir.relativize(fullPath));
+            else
+                throw new RuntimeException("Illegal directory - this should have already been caught by BaseIO.MakePathAbsoluteIfLegal");
+        } );
     }
 }

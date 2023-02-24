@@ -65,7 +65,7 @@ public class AMSource implements PluginSource {
     }
     private Plugin searchByPostUrl(String url) throws IOException {
         loadDocument(url);
-        Element element = lastDocument.selectFirst("#posts table.ttop table table.panel");
+        Element element = lastDocument.selectFirst("#posts table table table.panel");
         Plugin data = new Plugin();
         data.homepage = url;
         if (element == null) {
@@ -103,7 +103,7 @@ public class AMSource implements PluginSource {
             }
             data.name = lastDocument.selectFirst("#poststop").parent().child(1).text();
             //find attachments
-            element = lastDocument.selectFirst("#posts table.ttop fieldset table");
+            element = lastDocument.selectFirst("#posts table fieldset table");
         }
         if (element == null) throw new IOException("The specified target did not contain a plugin/patch");
         data.amattachments = new SourceCluster();
@@ -113,8 +113,7 @@ public class AMSource implements PluginSource {
             if (text.equals("Get Source")) data.amattachments.add(link.absUrl("href"), ".sp");
             else if (text.equals("Get Plugin")) data.amattachments.add(link.absUrl("href"), ".smx");
             else if (text.endsWith(".zip") || text.endsWith(".tar.gz") || text.endsWith(".7z")) {
-                data.packageurl = link.absUrl("href");
-                data.amattachments = null; //prefer archives
+                data.packageurl = link.absUrl("href"); //prefer archives
                 break;
             }
             else if (text.indexOf('.') > 0) data.amattachments.add(link.absUrl("href"), text);
@@ -129,20 +128,24 @@ public class AMSource implements PluginSource {
     public boolean fetch(Plugin dep) throws IOException {
         if (dep.packageurl != null) {
             Ref<String> filename = new Ref<>();
-            Path archive = Executable.workdir.resolve(Paths.get("spcache", "download", "."));
-            BaseIO.MakeDirectories(Executable.workdir, Paths.get("spcache", "download"));
+            Path archive = Executable.cachedir.resolve(Paths.get("download", "."));
+            BaseIO.MakeDirectories(Executable.cachedir, Paths.get("download"));
             BaseIO.DownloadURL(dep.packageurl, archive, null, filename);
             if (!Files.exists(archive))
                 throw new IOException("Download failed for "+dep.name);
             System.out.println("Downloaded "+filename.it +", extracting...");
             archive = archive.getParent().resolve(filename.it).normalize();
-            Path libs = Executable.workdir.resolve("spcache");
-            if (ArchiveIO.Unpack(archive, libs, ArchiveIO.SOURCEMOD_ARCHIVE_ROOT, ArchiveIO::FileExtractFilter) == 0)
-                throw new IOException("Failed to extract " + filename.it);
+            Path libs = Executable.cachedir.resolve("addons");
+            if (ArchiveIO.Unpack(archive, libs, ArchiveIO.SOURCEMOD_ARCHIVE_ROOT, ArchiveIO::FileExtractFilter) == 0 &&
+                ArchiveIO.Unpack(archive, libs.resolve("sourcemod"), ArchiveIO.SOURCEMOD_PLUGIN_PATH, ArchiveIO::FileExtractFilter) == 0) {
+                System.out.println("Archive has bad structure, guessing file paths!");
+                if (ArchiveIO.UnpackUnordered(archive, libs, ArchiveIO::FileExtractFilter) == 0)
+                    throw new IOException("Failed to extract " + filename.it);
+            }
             Files.deleteIfExists(archive);
             return true;
         } else {
-            Path libs = Executable.workdir.resolve("spcache");
+            Path libs = Executable.cachedir;
             Ref<String> filename = new Ref<>();
             int downloaded = 0;
             for (int i=0;i<dep.amattachments.size();i++) {

@@ -19,7 +19,7 @@ public class CompileTask implements Task {
     Path compilerPath;
     List<String> args, userArgs;
     public CompileTask(String[] args) {
-        Path baseDir = Executable.workdir.resolve(Paths.get("spcache", "addons", "sourcemod", "scripting"));
+        Path baseDir = Executable.cachedir.resolve(Paths.get("addons", "sourcemod", "scripting"));
         if (Executable.OS == Executable.OperatingSystem.Windows)
             compilerPath = baseDir.resolve("spcomp.exe");
         else if (Executable.OS == Executable.OperatingSystem.Linux && Executable.ARCH64)
@@ -30,18 +30,18 @@ public class CompileTask implements Task {
         this.args.add(compilerPath.toString());
 
         Path include;
-        if (Files.isDirectory(include = Executable.workdir.resolve(Paths.get("include"))))
+        if (Files.isDirectory(include = Executable.execdir.resolve(Paths.get("include"))))
             this.args.add("-i"+ cwdRelative(include));
-        if (Files.isDirectory(include = Executable.workdir.resolve(Paths.get("scripting","include"))))
+        if (Files.isDirectory(include = Executable.execdir.resolve(Paths.get("scripting","include"))))
             this.args.add("-i"+ cwdRelative(include));
-        if (Files.isDirectory(include = Executable.workdir.resolve(Paths.get("addons","sourcemod","scripting","include"))))
+        if (Files.isDirectory(include = Executable.execdir.resolve(Paths.get("addons","sourcemod","scripting","include"))))
             this.args.add("-i"+ cwdRelative(include));
         this.userArgs = Arrays.asList(args);
     }
 
     private Path cwdRelative(Path p) {
         try {
-            return Executable.workdir.relativize(p);
+            return Executable.execdir.relativize(p);
         } catch (Throwable x) {
             return p;
         }
@@ -53,7 +53,7 @@ public class CompileTask implements Task {
         cmd.addAll(userArgs.stream().map(BuildScript::injectRefs).collect(Collectors.toList()));
         BaseIO.MakeExecutable(Paths.get(cmd.get(0)));
         ProcessBuilder pb = new ProcessBuilder(cmd);
-        pb.directory(Executable.workdir.toFile());
+        pb.directory(Executable.execdir.toFile());
         pb.inheritIO();
         Process process = pb.start();
         if (process.waitFor()!=0) throw new RuntimeException("Compilation failed!");

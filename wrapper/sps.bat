@@ -29,6 +29,11 @@ if "%spsfile%"=="" (
  echo Could not find any SPSauce jar binary
  exit /B 1
 )
+
+rem handle install / uninstall commands
+if "%1"=="--install" goto install
+if "%1"=="--uninstall" goto uninstall
+
 set spsfile=%~dp0spsauce\%spsfile%
 rem get current codepage to restore later and change to utf8 - this allows us to easily print fancy stuff
 for /f "tokens=*" %%a in ('chcp') do for %%b in (%%a) do set "_codepage=%%~nb"
@@ -37,3 +42,21 @@ rem call the java application with the args
 call java -jar "%spsfile%" %*
 if %errorlevel% NEQ 0 pause
 chcp %_codepage% >nul
+
+exit /B 0
+
+:install
+echo Associating .sauce to application SPSauce
+assoc .sauce=SPSauce
+echo Creating application entry SPSauce
+ftype SPSauce=%~fn0 %%1
+echo DONE
+exit /B 0
+
+:uninstall
+echo Removing association from .sauce to application SPSauce
+assoc .sauce=
+echo Removing application entry SPSauce
+ftype SPSauce=
+echo DONE
+exit /B 0

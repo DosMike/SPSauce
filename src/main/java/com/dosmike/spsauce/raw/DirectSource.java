@@ -54,20 +54,20 @@ public class DirectSource implements PluginSource {
         //copy of AMSource#fetch without "patch" related lines
         if (dep.packageurl != null) {
             Ref<String> filename = new Ref<>();
-            Path archive = Executable.workdir.resolve(Paths.get("spcache", "download", "."));
-            BaseIO.MakeDirectories(Executable.workdir, Paths.get("spcache", "download"));
+            Path archive = Executable.cachedir.resolve(Paths.get("download", "."));
+            BaseIO.MakeDirectories(Executable.cachedir, Paths.get("download"));
             BaseIO.DownloadURL(dep.packageurl, archive, null, filename);
             if (!Files.exists(archive))
                 throw new IOException("Download failed for "+dep.name);
             System.out.println("Downloaded "+filename.it +", extracting...");
             archive = archive.getParent().resolve(filename.it).normalize();
-            Path libs = Executable.workdir.resolve("spcache");
+            Path libs = Executable.cachedir.resolve("addons");
            if (ArchiveIO.Unpack(archive, libs, ArchiveIO.SOURCEMOD_ARCHIVE_ROOT, ArchiveIO::FileExtractFilter) == 0)
                 throw new IOException("Cannot patch non-existing file, please ensure patches are applied after dependencies");
             Files.deleteIfExists(archive);
             return true;
         } else {
-            Path libs = Executable.workdir.resolve("spcache");
+            Path libs = Executable.cachedir;
             Ref<String> filename = new Ref<>();
             int downloaded = 0;
             for (int i=0;i<dep.amattachments.size();i++) {

@@ -24,6 +24,9 @@ public class SourceCluster {
     public Path estimateTarget(int n) {
         return EstimateDirectoryByName(names.get(n));
     }
+    public String toString(int entry) {
+        return names.get(entry)+" ("+files.get(entry)+")";
+    }
 
     public static Path EstimateDirectoryByName(String filename) {
         String name = Paths.get(filename).getFileName().toString();
